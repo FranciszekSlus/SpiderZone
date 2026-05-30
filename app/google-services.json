@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "970538922522",
+    "project_id": "spiderzone-d112d",
+    "storage_bucket": "spiderzone-d112d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:970538922522:android:2098987b5d549cb69d17a3",
+        "android_client_info": {
+          "package_name": "com.example.spiderzone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB12zSywB2zaCP-CjWgAeQcwft2RCDaEr4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
