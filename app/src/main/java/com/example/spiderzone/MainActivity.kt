@@ -43,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pets
@@ -256,6 +257,45 @@ private data class Reminder(
     val id: String = "",
     val title: String = "",
     val dueEpochMillis: Long = 0
+)
+
+internal data class BreedingPost(
+    val id: String = "",
+    val ownerUid: String = "",
+    val speciesId: String = "",
+    val speciesLatinName: String = "",
+    val speciesCommonName: String = "",
+    val notes: String = "",
+    val femaleLabel: String = "",
+    val maleLabel: String = "",
+    val createdAt: Long = 0L,
+    val ownerNickname: String = "",
+    val ownerAvatarUrl: String = ""
+) {
+    fun speciesDisplay(): String {
+        val latin = speciesLatinName.trim()
+        val common = speciesCommonName.trim()
+        return when {
+            latin.isNotBlank() && common.isNotBlank() -> "$latin ($common)"
+            latin.isNotBlank() -> latin
+            common.isNotBlank() -> common
+            else -> "—"
+        }
+    }
+
+    fun speciesKey(): String = speciesId.ifBlank {
+        speciesLatinName.trim().lowercase()
+    }.ifBlank { speciesCommonName.trim().lowercase() }
+}
+
+private data class BreedingPostItem(
+    val post: BreedingPost,
+    val isMine: Boolean
+)
+
+internal data class SpeciesFilterOption(
+    val key: String,
+    val label: String
 )
 
 private data class SignUpProfileData(
@@ -603,6 +643,36 @@ private class SpiderZoneRepository(
             .await()
     }
 
+    suspend fun loadBreedingFeed(myUid: String?, limit: Long = 80): List<BreedingPostItem> {
+        val snap = db.collection("breedingPosts")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(limit)
+            .get()
+            .await()
+        return snap.documents.mapNotNull { doc ->
+            val post = doc.toBreedingPost() ?: return@mapNotNull null
+            BreedingPostItem(post = post, isMine = !myUid.isNullOrBlank() && post.ownerUid == myUid)
+        }
+    }
+
+    suspend fun addBreedingPost(uid: String, post: BreedingPost) {
+        val profile = getUserProfile(uid)
+        db.collection("breedingPosts").add(
+            mapOf(
+                "ownerUid" to uid,
+                "speciesId" to post.speciesId,
+                "speciesLatinName" to post.speciesLatinName,
+                "speciesCommonName" to post.speciesCommonName,
+                "notes" to post.notes,
+                "femaleLabel" to post.femaleLabel,
+                "maleLabel" to post.maleLabel,
+                "createdAt" to System.currentTimeMillis(),
+                "ownerNickname" to (profile?.nickname.orEmpty()),
+                "ownerAvatarUrl" to (profile?.avatarUrl.orEmpty())
+            )
+        ).await()
+    }
+
     /** Uzupełnia publicAnimals dla pupili oznaczonych jako publiczne (np. zapisanych przed sync). */
     suspend fun syncMyPublicAnimalsToFeed(uid: String) {
         userAnimals(uid).filter { it.isPublic }.forEach { syncPublicAnimalFeed(uid, it) }
@@ -946,7 +1016,39 @@ private fun DocumentSnapshot.toReminder() = Reminder(
     dueEpochMillis = getLong("dueEpochMillis") ?: 0L
 )
 
-private enum class Tab { HOME, SPECIES, COLLECTION, COMMUNITY, REMINDERS, PROFILE }
+private fun DocumentSnapshot.toBreedingPost(): BreedingPost? {
+    val ownerUid = getString("ownerUid") ?: return null
+    return BreedingPost(
+        id = id,
+        ownerUid = ownerUid,
+        speciesId = getString("speciesId").orEmpty(),
+        speciesLatinName = getString("speciesLatinName").orEmpty(),
+        speciesCommonName = getString("speciesCommonName").orEmpty(),
+        notes = getString("notes").orEmpty(),
+        femaleLabel = getString("femaleLabel").orEmpty(),
+        maleLabel = getString("maleLabel").orEmpty(),
+        createdAt = getLong("createdAt") ?: 0L,
+        ownerNickname = getString("ownerNickname").orEmpty(),
+        ownerAvatarUrl = getString("ownerAvatarUrl").orEmpty()
+    )
+}
+
+private fun speciesFilterOptionsFromAnimals(animals: List<Animal>): List<SpeciesFilterOption> {
+    return animals
+        .mapNotNull { animal ->
+            val key = animal.speciesId.ifBlank {
+                animal.speciesLatinName.trim().lowercase()
+            }.ifBlank { animal.speciesCommonName.trim().lowercase() }
+            if (key.isBlank()) return@mapNotNull null
+            val label = animal.speciesDisplay().ifBlank { key }
+            key to label
+        }
+        .distinctBy { it.first }
+        .sortedBy { it.second.lowercase() }
+        .map { (key, label) -> SpeciesFilterOption(key = key, label = label) }
+}
+
+private enum class Tab { HOME, SPECIES, COLLECTION, COMMUNITY, BREEDING, PROFILE }
 
 private sealed interface SpeciesSearchHit {
     val latinName: String
@@ -1013,6 +1115,8 @@ private fun SpiderZoneApp(
     var authAvatarUri by remember { mutableStateOf<Uri?>(null) }
     var communityFeed by remember { mutableStateOf<List<CommunityAnimalItem>>(emptyList()) }
     var communityLoading by remember { mutableStateOf(false) }
+    var breedingFeed by remember { mutableStateOf<List<BreedingPostItem>>(emptyList()) }
+    var breedingLoading by remember { mutableStateOf(false) }
     var userProfile by remember { mutableStateOf<UserProfile?>(null) }
     var pendingSpeciesDetail by remember { mutableStateOf<Species?>(null) }
     var pendingHomeSpeciesDetail by remember { mutableStateOf<Species?>(null) }
@@ -1089,6 +1193,20 @@ private fun SpiderZoneApp(
             communityFeed = emptyList()
         } finally {
             communityLoading = false
+        }
+    }
+
+    LaunchedEffect(repository.currentUserId(), authGateVersion, currentTab) {
+        if (repository.currentUserId() == null) return@LaunchedEffect
+        if (currentTab != Tab.BREEDING) return@LaunchedEffect
+        breedingLoading = true
+        try {
+            breedingFeed = repository.loadBreedingFeed(repository.currentUserId())
+        } catch (e: Exception) {
+            snackbarHostState.showSnackbar(e.message ?: "Nie udalo sie zaladowac rozmnazania")
+            breedingFeed = emptyList()
+        } finally {
+            breedingLoading = false
         }
     }
 
@@ -1269,7 +1387,7 @@ private fun SpiderZoneApp(
                 NavigationBarItem(selected = currentTab == Tab.SPECIES, onClick = { currentTab = Tab.SPECIES }, icon = { Icon(Icons.Default.Search, null) }, label = { Text("Gatunki") })
                 NavigationBarItem(selected = currentTab == Tab.COLLECTION, onClick = { currentTab = Tab.COLLECTION }, icon = { Icon(Icons.Default.Pets, null) }, label = { Text("Hodowla") })
                 NavigationBarItem(selected = currentTab == Tab.COMMUNITY, onClick = { currentTab = Tab.COMMUNITY }, icon = { Icon(Icons.Default.People, null) }, label = { Text("Spolecznosc") })
-                NavigationBarItem(selected = currentTab == Tab.REMINDERS, onClick = { currentTab = Tab.REMINDERS }, icon = { Icon(Icons.Default.Notifications, null) }, label = { Text("Przypomnienia") })
+                NavigationBarItem(selected = currentTab == Tab.BREEDING, onClick = { currentTab = Tab.BREEDING }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Rozmnazanie") })
                 NavigationBarItem(selected = currentTab == Tab.PROFILE, onClick = { currentTab = Tab.PROFILE }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profil") })
             }
         }
@@ -1338,16 +1456,31 @@ private fun SpiderZoneApp(
                     }
                 }
             )
-            Tab.REMINDERS -> RemindersScreen(
+            Tab.BREEDING -> BreedingScreen(
                 padding = padding,
-                reminders = reminders,
-                onAddReminder = { reminder ->
-                    val uid = repository.currentUserId() ?: return@RemindersScreen
-                    runCatching {
-                        repository.addReminder(uid, reminder)
-                        reminders = repository.reminders(uid)
-                        scheduleReminder(context, reminder)
+                myUid = repository.currentUserId().orEmpty(),
+                animals = animals,
+                items = breedingFeed,
+                loading = breedingLoading,
+                onRefresh = {
+                    scope.launch {
+                        breedingLoading = true
+                        try {
+                            breedingFeed = repository.loadBreedingFeed(repository.currentUserId())
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(e.message ?: "Blad odswiezania")
+                        } finally {
+                            breedingLoading = false
+                        }
                     }
+                },
+                onAddPost = { post ->
+                    val uid = repository.currentUserId() ?: return@BreedingScreen
+                    repository.addBreedingPost(uid, post)
+                    breedingFeed = repository.loadBreedingFeed(uid)
+                },
+                onNotify = { msg ->
+                    scope.launch { snackbarHostState.showSnackbar(msg) }
                 }
             )
             Tab.PROFILE -> ProfileScreen(
@@ -1356,10 +1489,19 @@ private fun SpiderZoneApp(
                 email = Firebase.auth.currentUser?.email.orEmpty(),
                 profile = userProfile,
                 animals = animals,
+                reminders = reminders,
                 repository = repository,
                 themeMode = themeMode,
                 onThemeModeChange = onThemeModeChange,
                 onProfileUpdated = { userProfile = it },
+                onAddReminder = { reminder ->
+                    val uid = repository.currentUserId() ?: return@ProfileScreen
+                    runCatching {
+                        repository.addReminder(uid, reminder)
+                        reminders = repository.reminders(uid)
+                        scheduleReminder(context, reminder)
+                    }
+                },
                 onNotify = { msg ->
                     scope.launch { snackbarHostState.showSnackbar(msg) }
                 },
@@ -3021,19 +3163,237 @@ private fun formatEpochMillis(epoch: Long): String {
 }
 
 @Composable
-private fun RemindersScreen(
+private fun BreedingScreen(
     padding: PaddingValues,
+    myUid: String,
+    animals: List<Animal>,
+    items: List<BreedingPostItem>,
+    loading: Boolean,
+    onRefresh: () -> Unit,
+    onAddPost: suspend (BreedingPost) -> Unit,
+    onNotify: (String) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    val speciesOptions = remember(animals) { speciesFilterOptionsFromAnimals(animals) }
+    var selectedSpeciesKey by remember { mutableStateOf<String?>(null) }
+    var showAddForm by remember { mutableStateOf(false) }
+    var notes by remember { mutableStateOf("") }
+    var femaleLabel by remember { mutableStateOf("") }
+    var maleLabel by remember { mutableStateOf("") }
+    var postSpeciesKey by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
+
+    val mySpeciesKeys = remember(speciesOptions) { speciesOptions.map { it.key }.toSet() }
+    val filteredItems = remember(items, selectedSpeciesKey, mySpeciesKeys) {
+        val relevant = items.filter { it.post.speciesKey() in mySpeciesKeys }
+        if (selectedSpeciesKey == null) relevant
+        else relevant.filter { it.post.speciesKey() == selectedSpeciesKey }
+    }
+
+    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Rozmnazanie", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Dodawaj wpisy i przegladaj hodowcow. Filtruj po gatunkach z Twojej hodowli.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SpiderZoneColors.TextSecondary
+                )
+            }
+            if (loading) {
+                CircularProgressIndicator(Modifier.size(24.dp))
+            } else {
+                TextButton(onClick = onRefresh) { Text("Odswiez") }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        if (speciesOptions.isEmpty()) {
+            Text(
+                "Dodaj zwierzeta w Hodowli, aby odblokowac filtry gatunkow i publikacje rozmnazania.",
+                color = SpiderZoneColors.TextSecondary,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        } else {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item {
+                    AssistChip(
+                        onClick = { selectedSpeciesKey = null },
+                        label = { Text("Wszystkie moje gatunki") }
+                    )
+                }
+                items(speciesOptions, key = { it.key }) { option ->
+                    AssistChip(
+                        onClick = { selectedSpeciesKey = option.key },
+                        label = { Text(option.label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = { showAddForm = !showAddForm }) {
+                Text(if (showAddForm) "Anuluj dodawanie" else "Dodaj rozmnazanie")
+            }
+        }
+        if (showAddForm && speciesOptions.isNotEmpty()) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SpiderZoneColors.Surface),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Nowy wpis", fontWeight = FontWeight.Bold)
+                    Text("Gatunek (z Twojej hodowli)", style = MaterialTheme.typography.labelMedium)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(speciesOptions, key = { "post-${it.key}" }) { option ->
+                            AssistChip(
+                                onClick = { postSpeciesKey = option.key },
+                                label = { Text(option.label, maxLines = 1) }
+                            )
+                        }
+                    }
+                    AppOutlinedTextField(value = femaleLabel, onValueChange = { femaleLabel = it }, label = "Samica (opcjonalnie)")
+                    AppOutlinedTextField(value = maleLabel, onValueChange = { maleLabel = it }, label = "Samiec (opcjonalnie)")
+                    AppOutlinedTextField(
+                        value = notes,
+                        onValueChange = { notes = it },
+                        label = "Notatki / plan",
+                        singleLine = false,
+                        maxLines = 4
+                    )
+                    Button(
+                        onClick = {
+                            val key = postSpeciesKey ?: speciesOptions.firstOrNull()?.key
+                            if (key == null) {
+                                onNotify("Wybierz gatunek")
+                                return@Button
+                            }
+                            val animal = animals.firstOrNull {
+                                val k = it.speciesId.ifBlank { it.speciesLatinName.trim().lowercase() }
+                                    .ifBlank { it.speciesCommonName.trim().lowercase() }
+                                k == key
+                            } ?: run {
+                                onNotify("Brak zwierzecia dla wybranego gatunku")
+                                return@Button
+                            }
+                            scope.launch {
+                                saving = true
+                                runCatching {
+                                    onAddPost(
+                                        BreedingPost(
+                                            ownerUid = myUid,
+                                            speciesId = animal.speciesId,
+                                            speciesLatinName = animal.speciesLatinName.ifBlank { animal.speciesLabel },
+                                            speciesCommonName = animal.speciesCommonName,
+                                            notes = notes.trim(),
+                                            femaleLabel = femaleLabel.trim(),
+                                            maleLabel = maleLabel.trim()
+                                        )
+                                    )
+                                    notes = ""
+                                    femaleLabel = ""
+                                    maleLabel = ""
+                                    showAddForm = false
+                                    onNotify("Dodano wpis rozmnazania")
+                                }.onFailure {
+                                    onNotify(it.message ?: "Blad zapisu")
+                                }
+                                saving = false
+                            }
+                        },
+                        enabled = !saving,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (saving) "Zapisywanie..." else "Opublikuj")
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            if (!loading && filteredItems.isEmpty()) {
+                item {
+                    Text(
+                        "Brak wpisow dla wybranych gatunkow.",
+                        color = SpiderZoneColors.TextSecondary
+                    )
+                }
+            }
+            items(filteredItems, key = { it.post.id }) { row ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SpiderZoneColors.Surface),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            RemoteImage(
+                                url = row.post.ownerAvatarUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(18.dp)),
+                                placeholderIcon = Icons.Default.Person
+                            )
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    row.post.ownerNickname.ifBlank { "Hodowca" },
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    formatEpochMillis(row.post.createdAt),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = SpiderZoneColors.TextSecondary
+                                )
+                            }
+                            if (row.isMine) {
+                                Text("Twoj wpis", color = SpiderZoneColors.Primary, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        Text(row.post.speciesDisplay(), fontWeight = FontWeight.Bold)
+                        if (row.post.femaleLabel.isNotBlank() || row.post.maleLabel.isNotBlank()) {
+                            Text(
+                                buildString {
+                                    if (row.post.femaleLabel.isNotBlank()) append("Samica: ${row.post.femaleLabel}")
+                                    if (row.post.maleLabel.isNotBlank()) {
+                                        if (isNotEmpty()) append(" | ")
+                                        append("Samiec: ${row.post.maleLabel}")
+                                    }
+                                },
+                                color = SpiderZoneColors.TextSecondary
+                            )
+                        }
+                        if (row.post.notes.isNotBlank()) {
+                            Text(row.post.notes, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileRemindersSection(
     reminders: List<Reminder>,
     onAddReminder: suspend (Reminder) -> Unit
 ) {
     var title by remember { mutableStateOf("Karmienie") }
     val scope = rememberCoroutineScope()
 
-    Column(Modifier.fillMaxSize().padding(padding).padding(12.dp)) {
-        Text("Przypomnienia", style = MaterialTheme.typography.titleLarge)
-            AppOutlinedTextField(value = title, onValueChange = { title = it }, label = "Tytul")
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Przypomnienia", fontWeight = FontWeight.Bold)
+        Text(
+            "Harmonogram opieki — karmienie, sprzatanie, zraszanie, linienie.",
+            style = MaterialTheme.typography.bodySmall,
+            color = SpiderZoneColors.TextSecondary
+        )
+        AppOutlinedTextField(value = title, onValueChange = { title = it }, label = "Tytul przypomnienia")
+        Button(
+            onClick = {
                 scope.launchCatching {
                     onAddReminder(
                         Reminder(
@@ -3042,11 +3402,16 @@ private fun RemindersScreen(
                         )
                     )
                 }
-            }) { Text("Dodaj (za 6h)") }
-            Spacer(Modifier.height(12.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(reminders) { r ->
-                StatCard(r.title, "Termin: ${r.dueEpochMillis}")
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Dodaj przypomnienie (za 6h)")
+        }
+        if (reminders.isEmpty()) {
+            Text("Brak aktywnych przypomnien.", color = SpiderZoneColors.TextSecondary)
+        } else {
+            reminders.forEach { r ->
+                StatCard(r.title, "Termin: ${formatEpochMillis(r.dueEpochMillis)}")
             }
         }
     }
@@ -3059,10 +3424,12 @@ private fun ProfileScreen(
     email: String,
     profile: UserProfile?,
     animals: List<Animal>,
+    reminders: List<Reminder>,
     repository: SpiderZoneRepository,
     themeMode: AppThemeMode,
     onThemeModeChange: (AppThemeMode) -> Unit,
     onProfileUpdated: (UserProfile?) -> Unit,
+    onAddReminder: suspend (Reminder) -> Unit,
     onNotify: (String) -> Unit,
     onSignOut: () -> Unit
 ) {
@@ -3285,6 +3652,10 @@ private fun ProfileScreen(
                                     "Kliknij avatar na gorze, aby zmienic zdjecie profilowe.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = SpiderZoneColors.TextSecondary
+                                )
+                                ProfileRemindersSection(
+                                    reminders = reminders,
+                                    onAddReminder = onAddReminder
                                 )
                             }
                         }

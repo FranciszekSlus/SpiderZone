@@ -1,6 +1,14 @@
 {
 
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "breedingPosts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
 
   "fieldOverrides": []
 

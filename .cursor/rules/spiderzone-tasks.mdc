@@ -1,0 +1,20 @@
+---
+description: SpiderZone task workflow — always check docs/tasks before feature work
+globs:
+  - "**/*"
+---
+
+# SpiderZone — zadania i dokumentacja
+
+Przed większą zmianą funkcjonalną:
+
+1. Przeczytaj `docs/tasks/TASKS.md` — sprawdź czy jest powiązane zadanie (ID).
+2. Kontekst produktu: `docs/02-moduly-aplikacji.md`, decyzje: `docs/08-decyzje-produktowe.md`.
+3. Kontekst techniczny: `docs/12-dzialanie-techniczne.md`, dane: `docs/05-architektura-danych.md`.
+
+Po ukończeniu zadania:
+
+- Przenieś wpis z Todo/In Progress → Done w `docs/tasks/TASKS.md`.
+- Zaktualizuj `docs/11-zadania-stan-projektu.md` jeśli zmienił się stan modułu.
+
+Nie używaj GitHub Issues jako źródła prawdy — źródłem jest `docs/tasks/TASKS.md`.
