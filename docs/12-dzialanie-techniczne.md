@@ -237,7 +237,9 @@ Wymaga plików: `firebase.json`, `.firebaserc` (już w repo).
 
 ## 8. Flutter (`flutter_app/`)
 
-**Status:** szkielet, nie zastępuje jeszcze Androida.
+**Status:** aktywny kierunek docelowy (Android + iOS). Flutter SDK 3.44.2 działa lokalnie.
+
+`flutter_app/` zawiera szkielet kodu Dart (`lib/`, `test/`, `pubspec.yaml`) oraz wygenerowane foldery platform (`android/`, `ios/`, `web/`, `windows/`, `linux/`, `macos/`).
 
 ```text
 main() → FirebaseBootstrap.initialize()
@@ -246,6 +248,47 @@ main() → FirebaseBootstrap.initialize()
 ```
 
 Setup: patrz [`flutter_app/README.md`](../flutter_app/README.md).
+
+### Minimalny start FLUT-01 na Windows
+
+1. Flutter SDK jest rozpakowany w `C:\src\flutter`.
+2. Dodaj `C:\src\flutter\bin` do zmiennej środowiskowej `PATH`.
+3. Otwórz nowy terminal i sprawdź:
+
+```powershell
+flutter doctor -v
+```
+
+4. Platformy zostały wygenerowane komendą:
+
+```powershell
+cd C:\Users\Franczesco\AndroidStudioProjects\SpiderZone\flutter_app
+flutter create . --org com.example.spiderzone --project-name spiderzone
+flutter pub get
+```
+
+5. Podłącz Firebase:
+
+```powershell
+dart pub global activate flutterfire_cli
+flutterfire configure --project=spiderzone-d112d
+```
+
+### Testy Flutter
+
+```powershell
+cd C:\Users\Franczesco\AndroidStudioProjects\SpiderZone\flutter_app
+flutter analyze
+flutter test
+flutter run
+```
+
+Stan po setupie:
+
+- `flutter analyze` — OK
+- `flutter test` — OK
+- `flutter run` — OK na emulatorze Android
+- Chrome/Visual Studio z `flutter doctor` nie sa wymagane dla aplikacji mobilnej
 
 ---
 

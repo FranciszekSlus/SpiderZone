@@ -4,8 +4,8 @@
 
 | Zakładka | Moduł |
 |----------|--------|
-| Home | Podsumowanie, skróty, taksonomia |
-| Gatunki | Baza wiedzy |
+| Home | Podsumowanie, skróty, wyszukiwarka gatunków, ostatnie aktywności |
+| Gatunki | Baza wiedzy / szczegóły po wejściu z Home lub listy |
 | Hodowla | Własne zwierzęta |
 | Społeczność | Publiczni hodowcy i pupile |
 | Rozmnażanie | Dokumentacja breeding |
@@ -20,12 +20,27 @@
 **Dane:** nazwa łacińska i potoczna, zdjęcia, trudność, temperament, wilgotność, temperatura, długość życia, rozmiar, pochodzenie, zalecenia, ciekawostki.
 
 **Funkcje:**
-- Wyszukiwanie po nazwie (MVP).
+- Wyszukiwanie po nazwie dostępne bezpośrednio na Home.
 - Filtry (trudność — zaimplementowane; temperament, region — częściowo / do rozbudowy).
 - Taksonomia ptasników (drzewo kategorii).
 - Docelowo: porównywarka 2 gatunków, wyszukiwanie po zdjęciu (AI).
 
 **Źródła danych:** patrz [07-problemy-i-wyzwania.md](07-problemy-i-wyzwania.md#baza-gatunków-rzetelne-dane).
+
+---
+
+## Home
+
+**Cel:** ekran startowy, który od razu pomaga znaleźć gatunek i wrócić do najważniejszych działań.
+
+**Docelowe elementy:**
+- Wyszukiwarka gatunków w bazie.
+- Skróty: dodaj zwierzę, dodaj rozmnażanie, przypomnienia, profil.
+- Ostatnie zwierzęta z hodowli.
+- Ostatnie wpisy rozmnażania.
+- Status danych / puste stany dla nowych użytkowników.
+
+**Decyzja:** nie robimy osobnego okna tylko do wyszukiwarki; wyszukiwanie gatunków ma być częścią Home.
 
 ---
 
@@ -62,17 +77,22 @@ users/{uid}/animals/{id}  →  (isPublic=true)  →  publicAnimals/{id}
 
 **Lokalizacja:** osobna zakładka (nie przypomnienia).
 
-**Widoczność (decyzja):** wpis może być **prywatny** lub **publiczny** — do implementacji w UI i Firestore (`isPublic` na `breedingPosts`).
+**Widoczność:** wpis może być **prywatny** lub **publiczny** (`isPublic` na `breedingPosts`).
 
 **Dane wpisu (obecne + planowane):**
-- Gatunek (tylko z hodowli użytkownika).
+- Gatunek wybierany przez wyszukiwanie w bazie gatunków.
 - Samica / samiec (etykiety).
+- Status: planowane / w trakcie / udane / nieudane.
+- Data rozpoczęcia i data kokonu.
 - Notatki.
-- **Do dodania:** data, warunki (temp/wilgotność), zachowanie, status (planned / in_progress / success / failed).
+- Zdjęcia i filmy.
+- **Do dodania:** bardziej szczegółowe warunki (temp/wilgotność), zachowanie, filtrowanie po statusie/datach.
 
-**Feed:** publiczne wpisy innych; filtr po gatunkach z własnej hodowli.
+**Feed:** własne wpisy zawsze widoczne dla autora; wpisy innych tylko jeśli są publiczne; filtr po gatunkach z własnej hodowli.
 
-**Kolekcja:** `breedingPosts`.
+**Kolekcje:**
+- `users/{uid}/breedingPosts/{postId}` — wpisy własne, także prywatne.
+- `breedingPosts/{postId}` — tylko publiczny feed.
 
 ---
 
@@ -96,3 +116,13 @@ users/{uid}/animals/{id}  →  (isPublic=true)  →  publicAnimals/{id}
 - Weryfikacja email przed pełnym dostępem.
 - Profil: avatar, bio, statystyki, motyw (system/jasny/ciemny).
 - Profil publiczny: `publicProfiles/{uid}`.
+
+---
+
+## Krótkie wpisy i pytania (pomysł na później)
+
+**Cel:** szybkie posty społecznościowe w stylu tweetów oraz pytania otwarte do innych hodowców.
+
+**Status:** zaakceptowany kierunek, ale nie część MVP rozmnażania.
+
+**Docelowo:** osobna kolekcja, np. `communityPosts`, z typem wpisu (`post` / `question`), widocznością, komentarzami i moderacją.

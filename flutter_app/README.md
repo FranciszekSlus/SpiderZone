@@ -60,18 +60,20 @@ To nadpisze `lib/core/firebase/firebase_options.dart` prawdziwymi kluczami.
 flutter run
 ```
 
-## Design system (dark)
+## Design system — Terrarium Night
 
 | Token | Wartość |
 |-------|---------|
-| Tło | `#121212` |
-| Karty | `#1E1E1E` |
-| Primary | `#4CAF50` |
-| Tekst | `#E0E0E0` / `#A0A0A0` |
+| Tło | `#0E1411` |
+| Karty | `#17211B` |
+| Karty / warstwa 2 | `#203027` |
+| Primary | `#6FBF73` |
+| Akcent | `#D98E32` |
+| Tekst | `#E7EEE9` / `#9DAEA4` |
 | Radius kart | 14px |
 | Animacja ekranu | 250ms fade + slide |
 
 ## Relacja do projektu Android (Kotlin)
 
 W katalogu nadrzędnym (`SpiderZone/`) jest działająca wersja natywna Android.
-Flutter to docelowy stack iOS + Android z jednego kodu.
+Od teraz Kotlin Compose traktujemy jako wersję referencyjną/prototyp, a Flutter jako docelowy klient iOS + Android z jednego kodu.

@@ -2,7 +2,7 @@
 
 ## Baza gatunków — rzetelne dane
 
-**Status:** temat do **przedyskutowania** z właścicielem (brak finalnej decyzji).
+**Status:** decyzja robocza podjęta: budujemy własną bazę stopniowo, bez scrapingu treści z zewnętrznych serwisów.
 
 ### Dlaczego to problem
 
@@ -10,18 +10,26 @@
 - Duża liczba gatunków = dużo pracy przy weryfikacji.
 - Źródła internetowe często się sprzeczają.
 
-### Opcje (do dyskusji)
+### Decyzja robocza
 
-| Opcja | Plusy | Minusy |
-|-------|-------|--------|
-| Własny CSV + ekspertyza | Kontrola jakości | Czasochłonne |
-| Import z otwartych źródeł | Szybki start | Licencje, błędy |
-| Społeczność + moderatorzy | Skalowalne | Wymaga moderacji |
-| **Hybryda (rekomendacja robocza)** | CSV top 50–100 + Firestore + moderatorzy | Nadal wymaga kuratora |
+- CSV zostaje szkieletem bazy: nazwa naukowa, nazwa polska, taksonomia.
+- Parametry hodowlane (temperatura, wilgotność, wielkość, dieta, CITES itd.) będą uzupełniane etapami.
+- Nie kopiujemy masowo danych z Terrarium ani innych serwisów bez zgody/licencji.
+- Linki zewnętrzne mogą być pomocniczą referencją, ale użytkownik ma zostawać w aplikacji.
+- W późniejszej fazie możliwa pomoc ekspercka/moderatorska, np. znajomy sklep/hodowca, po pokazaniu okrojonej wersji aplikacji.
+
+### Poziomy kompletności danych
+
+| Poziom | Zakres | Cel |
+|--------|--------|-----|
+| A — szkielet | Nazwa naukowa, nazwa polska, taksonomia | Szybko pokryć dużą liczbę gatunków |
+| B — parametry podstawowe | Występowanie, tryb życia, temp., wilgotność, wielkość | MVP dla popularnych gatunków |
+| C — zweryfikowane | Dieta, CITES, temperament, rozmnażanie, notatki eksperta | Dane po weryfikacji przez właściciela/moderatora |
 
 ### Co mamy teraz
 
 - `terrarium_species_care_template.csv` w assets.
+- `terrarium_species.csv` jako główna lista gatunków w aplikacji.
 - Taksonomia ptasników (`TheraphosidaeTaxonomy.kt`).
 - Merge z Firestore `species` + seed (`SeedData.kt`).
 
@@ -29,7 +37,7 @@
 
 - Proces weryfikacji danych (kto zatwierdza zmiany).
 - Zdjęcia gatunków w jakości i z licencją.
-- Pokrycie gadów i płazów.
+- Większe pokrycie ptaszników oraz osobno gadów, płazów i owadów.
 - Porównywarka gatunków.
 
 ---

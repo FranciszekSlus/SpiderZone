@@ -1,176 +1,90 @@
-# Zadania i stan projektu
+﻿# Zadania i stan projektu
 
-> Aktualizacja: 2026-04-26. Oparte na kodzie w repo (Android Kotlin + szkielet Flutter).  
-> **Aktywna tablica:** [tasks/TASKS.md](tasks/TASKS.md) · **Technika:** [12-dzialanie-techniczne.md](12-dzialanie-techniczne.md)
+> Aktualizacja: 2026-06-17. Oparte na kodzie w repo (Android Kotlin jako referencja + Flutter jako klient docelowy).
+> Aktywna tablica: docs/tasks/TASKS.md · Technika: docs/12-dzialanie-techniczne.md
 
-Legenda: ✅ zrobione · 🟡 częściowo · ❌ brakuje · ⚠️ problem / blokada
+Legenda: ✅ zrobione · 🟡 czesciowo · ❌ brakuje · ⚠️ problem / blokada
 
----
+## 1. Moduly funkcjonalne
 
-## 1. Moduły funkcjonalne
-
-### Auth i konto
+### Rozmnazanie
 
 | Element | Stan | Uwagi |
 |---------|------|-------|
-| Rejestracja email/hasło | ✅ | |
-| Logowanie | ✅ | |
-| Reset hasła | ✅ | |
-| Weryfikacja email | ✅ | Blokada przed pełnym dostępem |
-| Profil: pseudonim, imię, nazwisko, poziom | ✅ | |
-| Avatar upload | ✅ | |
-| Zapamiętaj mnie | ✅ | |
-| Usunięcie konta (RODO) | ❌ | Wymóg Google Play |
-
-### Baza gatunków
-
-| Element | Stan | Uwagi |
-|---------|------|-------|
-| CSV lokalny + taksonomia | ✅ | `terrarium_species_care_template.csv` |
-| Firestore `species` + seed | ✅ | |
-| Wyszukiwanie po nazwie | ✅ | |
-| Filtr trudności | ✅ | |
-| Ekran szczegółów gatunku | ✅ | |
-| Filtry: temperament, region, rozmiar | 🟡 | Do rozbudowy |
-| Porównywarka 2 gatunków | ❌ | |
-| Zdjęcia gatunków (jakościowe) | 🟡 | Często puste URL |
-| **Rzetelna baza danych** | ⚠️ | **Problem otwarty — dyskusja** |
-| Gady / płazy w bazie | 🟡 | Struktura jest, dane słabe |
-
-### Hodowla
-
-| Element | Stan | Uwagi |
-|---------|------|-------|
-| Dodawanie / edycja zwierząt | ✅ | |
-| Zdjęcia i filmy | ✅ | Upload Storage |
-| Publiczne / prywatne | ✅ | `isPublic` → `publicAnimals` |
-| Stadium, płeć, notatki | ✅ | |
-| Historia linienia (osobna) | ❌ | Tylko notatki w polu |
-| Log wzrostu | ❌ | |
-
-### Społeczność
-
-| Element | Stan | Uwagi |
-|---------|------|-------|
-| Feed publicznych pupili | ✅ | Siatka |
-| Profil publiczny hodowcy | ✅ | |
-| Szczegóły pupila | ✅ | |
-| Komentarze | ❌ | Backlog |
-| Obserwowanie użytkowników | ❌ | |
-| Czaty | ❌ | Backlog |
-
-### Rozmnażanie
-
-| Element | Stan | Uwagi |
-|---------|------|-------|
-| Zakładka w nawigacji | ✅ | |
+| Zakladka w nawigacji | ✅ | |
 | Dodawanie wpisu | ✅ | Gatunek z hodowli |
-| Feed innych hodowców | ✅ | `breedingPosts` |
+| Feed innych hodowcow | ✅ | breedingPosts |
 | Filtr po gatunkach z hodowli | ✅ | |
-| **Prywatne / publiczne wpisy** | ❌ | **Decyzja: ma być — do kodu** |
-| Status (plan / w trakcie / sukces / fail) | ❌ | |
-| Data, warunki, zachowanie | ❌ | |
-| Edycja / usuwanie wpisu | ❌ | |
+| Prywatne / publiczne wpisy | ✅ | `isPublic` w `breedingPosts`, własne wpisy zawsze dla autora, cudze tylko publiczne |
+| Status (plan / w trakcie / sukces / fail) | ✅ | `status` |
+| Data rozpoczecia / data kokonu | ✅ | `startDate`, `cocoonDate` |
+| Zdjecia i filmy | ✅ | `photoUrls`, `videoUrls` |
+| Warunki i zachowanie | ❌ | Do rozbudowy filtrowania i notatek strukturalnych |
 
-### Przypomnienia
-
-| Element | Stan | Uwagi |
-|---------|------|-------|
-| Sekcja w ustawieniach profilu | ✅ | |
-| Dodawanie + lista | ✅ | |
-| Lokalne powiadomienia Android | ✅ | |
-| Powiązanie ze zwierzęciem | ❌ | |
-| Harmonogram cykliczny | ❌ | |
-| Push FCM | ❌ | |
-
-### Profil i ustawienia
+### Media
 
 | Element | Stan | Uwagi |
 |---------|------|-------|
-| Statystyki hodowli | ✅ | |
-| Bio | ✅ | |
-| Motyw jasny/ciemny/system | ✅ | |
-| Przypomnienia w ustawieniach | ✅ | |
+| Zdjecia i filmy | 🟡 | Docelowo Cloudinary Free; czesc kodu nadal pod Firebase Storage |
+| Kompresja przed uploadem | ❌ | Zadanie COST-01 |
+| Paginacja feedow | ❌ | Zadanie COST-01 |
 
----
-
-## 2. Flutter (`flutter_app/`)
+## 2. Infrastruktura i jakosc
 
 | Element | Stan | Uwagi |
 |---------|------|-------|
-| Dark theme + tokeny | ✅ | |
-| Routing 5 zakładek | ✅ | |
-| Firebase bootstrap | 🟡 | Placeholder `REPLACE_ME` |
-| `flutter create` + platformy | ❌ | Flutter nie w PATH na dev |
-| Parity z Android | ❌ | Tylko placeholdery ekranów |
+| firestore.rules w repo | ✅ | Deploy w Console do potwierdzenia |
+| firestore.indexes.json | ✅ | breedingPosts dodany |
+| storage.rules | 🟡 | Fallback, bo media idziemy w Cloudinary |
+| Refaktoryzacja UI (moduly) | ❌ | MainActivity ~3800 linii |
+| Flutter SDK | ✅ | Flutter 3.44.2 działa lokalnie |
+| Flutter platformy | ✅ | `flutter create .` wygenerował `android/` i `ios/` |
+| Flutter analyze/test/run | ✅ | Analyze/test OK, run działa na Android emulator |
+| FlutterFire | ❌ | Do wykonania `flutterfire configure` |
+| iOS test plan | ❌ | Wymaga Mac/Xcode lub cloud Mac |
 
----
+## 3. Problemy jako zadania (priorytet)
 
-## 3. Infrastruktura i jakość
-
-| Element | Stan | Uwagi |
-|---------|------|-------|
-| `firestore.rules` w repo | ✅ | Deploy w Console? — sprawdzić |
-| `storage.rules` | ✅ | |
-| Indeksy Firestore | 🟡 | `breedingPosts` dodany |
-| Testy jednostkowe | 🟡 | Kilka smoke testów |
-| Refaktoryzacja UI (moduły) | ❌ | ⚠️ MainActivity ~3800 linii |
-| CI (GitHub Actions) | ❌ | |
-| Crashlytics | ❌ | |
-
----
-
-## 4. Problemy jako zadania (priorytetowe)
-
-Te nie są „feature”, tylko **blokery jakości / launchu**:
-
-### ⚠️ P1 — przed publikacją
+### P1 — przed publikacja
 
 | ID | Zadanie | Opis |
 |----|---------|------|
-| LEGAL-01 | Polityka prywatności | RODO, Firebase, dane użytkownika |
-| LEGAL-02 | Regulamin | Treści, odpowiedzialność, zakazy |
-| LEGAL-03 | Usunięcie konta | UI + kasowanie Firestore + Storage |
-| DATA-01 | **Strategia bazy gatunków** | Dyskusja + plan weryfikacji danych |
-| UI-01 | **Refaktoryzacja MainActivity** | Podział na pliki/moduły |
-| FB-01 | Deploy reguł i indeksów Firebase | Console / CLI |
-| BREED-01 | `isPublic` na wpisach rozmnażania | Zgodnie z decyzją produktową |
-| COST-01 | Kompresja zdjęć + paginacja feedów | Limity Spark |
+| DATA-01 | Strategia bazy gatunkow | Dyskusja + plan weryfikacji danych |
+| DATA-02 | Gatunek wzorcowy | 1 pełny gatunek z kompletem danych i legalnym zdjęciem |
+| UX-01 | Design system Flutter | Komponenty, typografia, kolory, puste stany |
+| UX-02 | Home z wyszukiwarką | Bez osobnego ekranu wyszukiwania |
+| FLUT-02 | Auth we Flutter | Logowanie, rejestracja, email gate |
+| FLUT-03A | Gatunki we Flutter | Home search + karta gatunku |
+| MEDIA-01 | Migracja uploadu mediow do Cloudinary Free | Zastapic upload Firebase Storage, zapisywac URL w Firestore |
+| MEDIA-02 | Cloudinary Flutter service | Unsigned upload preset + multipart upload |
+| COST-01 | Kompresja zdjec + paginacja feedow | Limity Spark + transfer Cloudinary |
+| UI-01 | Refaktoryzacja MainActivity | Podzial na pliki/moduly |
+| LEGAL-01 | Polityka prywatnosci | RODO |
+| LEGAL-02 | Regulamin | Tresci i odpowiedzialnosc |
+| LEGAL-03 | Usuniecie konta | UI + kasowanie danych |
+| FB-01 | Deploy reguly i indeksow Firebase | Console / CLI |
+| FB-02 | Migracja fallbacku breeding | `breedingPostsFallback` -> `users/{uid}/breedingPosts` |
 
 ### P2 — po MVP
 
 | ID | Zadanie |
 |----|---------|
-| TECH-01 | Decyzja Flutter vs Android — [09-flutter-vs-android.md](09-flutter-vs-android.md) |
-| BREED-02 | Statusy, daty, warunki, zachowanie w rozmnażaniu |
+| FLUT-01 | Dokończyć FlutterFire |
+| FLUT-03B | Hodowla we Flutter |
+| FLUT-03C | Rozmnażanie we Flutter |
+| FLUT-03D | Społeczność we Flutter |
+| FLUT-03E | Profil i ustawienia we Flutter |
+| IOS-01 | Plan testowania iOS |
 | REM-01 | Przypomnienia cykliczne + FCM |
-| SOC-01 | Komentarze |
-| MOD-01 | Role moderatorów |
+| SOC-01 | Krotkie wpisy i pytania spolecznosci |
 
----
+## 4. Nastepne kroki (kolejnosc)
 
-## 5. Wykonane (skrót)
-
-- Auth pełny cykl + weryfikacja email
-- Gatunki: CSV, taksonomia, Firestore, szczegóły, wyszukiwanie
-- Hodowla z mediami i widocznością publiczną
-- Społeczność: feed + profile
-- Rozmnażanie: podstawowy feed i dodawanie
-- Przypomnienia w ustawieniach
-- Dokumentacja w `docs/`
-- Szkielet Flutter
-
----
-
-## 6. Następne kroki (sugerowana kolejność)
-
-1. **DATA-01** — spotkanie/decyzja: skąd bierzemy dane gatunków.
-2. **BREED-01** — prywatne/publiczne wpisy rozmnażania.
-3. **UI-01** — refaktoryzacja (łatwiejsze dalsze feature).
-4. **LEGAL-01..03** — przed Google Play.
-5. **TECH-01** — Flutter vs Android (po przeczytaniu [09](09-flutter-vs-android.md)).
-6. **FB-01** — deploy Firebase.
-
----
-
-*Po każdym większym merge zaktualizuj tabele w sekcji 1–3.*
+1. FLUT-01 — `flutterfire configure`
+2. UX-01 / UX-02 — design system i Home z wyszukiwarką
+3. FLUT-02 — Auth we Flutter
+4. DATA-02 — gatunek wzorcowy
+5. MEDIA-01 / MEDIA-02 — Cloudinary
+6. FLUT-03A — gatunki we Flutter
+7. FLUT-03B / FLUT-03C — hodowla i rozmnażanie we Flutter
+8. FB-01 / FB-02 — reguły i migracja fallbacku

@@ -30,7 +30,10 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Status Firebase', fontWeight: FontWeight.w600),
+                const Text(
+                  'Status Firebase',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   FirebaseBootstrap.isReady
