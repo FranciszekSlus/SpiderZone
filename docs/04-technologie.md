@@ -1,12 +1,12 @@
-# Technologie
+﻿# Technologie
 
 ## Używane teraz
 
 | Obszar | Technologia |
 |--------|-------------|
-| Aplikacja mobilna (aktywna) | Android — Kotlin + Jetpack Compose |
-| Aplikacja mobilna (szkielet) | Flutter w `flutter_app/` |
-| Backend | Firebase Spark: Auth, Firestore, Storage |
+| Aplikacja mobilna (referencyjna) | Android — Kotlin + Jetpack Compose |
+| Aplikacja mobilna (docelowa) | Flutter w `flutter_app/` (Android + iOS) |
+| Backend | Firebase Spark: Auth, Firestore |
 | IDE | Android Studio |
 | AI | Cursor |
 | Git | GitHub, branch `main` |
@@ -19,7 +19,7 @@
 | Mobile cross-platform | Flutter — analiza: [09-flutter-vs-android.md](09-flutter-vs-android.md) |
 | Stan UI (Flutter) | Riverpod lub Bloc |
 | Nawigacja (Flutter) | go_router (już w szkielecie) |
-| Obrazy | Kompresja przed uploadem + Coil (Android) / cached_network_image (Flutter) |
+| Obrazy | **Cloudinary Free + kompresja przed uploadem**; wyświetlanie przez Coil (Android) / cached_network_image (Flutter) |
 | Push | FCM + lokalne notyfikacje |
 | CI | GitHub Actions (build APK/AAB) |
 | Crashy | Firebase Crashlytics |
@@ -27,10 +27,13 @@
 
 ## Wybór Android vs Flutter
 
-**Nie rozstrzygnięty** — patrz [09-flutter-vs-android.md](09-flutter-vs-android.md). Decyzja po przeczytaniu za/przeciw.
+**Rozstrzygnięty:** wybór padł na **Flutter** jako klient docelowy (Android + iOS).
+
+Kotlin Compose zostaje jako działający prototyp/referencja funkcji, ale nowe większe moduły planujemy już pod Flutter.
 
 ## Task tracking
 
-**Źródło prawdy:** [tasks/TASKS.md](tasks/TASKS.md) w repo (Cursor ma do niego dostęp).  
-**Workflow:** [13-trackowanie-zadan.md](13-trackowanie-zadan.md) — GitHub Issues nieużywane; opcjonalnie Notion/ClickUp jako lustro.  
+**Źródło prawdy:** **Notion (SpiderZone Tasks)**.
+**Kopia techniczna:** [tasks/TASKS.md](tasks/TASKS.md) dla pracy z Cursor.
+**Workflow:** [13-trackowanie-zadan.md](13-trackowanie-zadan.md).
 **Reguła Cursor:** `.cursor/rules/spiderzone-tasks.mdc`

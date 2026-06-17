@@ -1,7 +1,8 @@
-# Flutter vs Android (Kotlin Compose) — za i przeciw
+# Flutter vs Android (Kotlin Compose) — decyzja
 
-> **Status decyzji:** nierozstrzygnięte (2026-04-26).  
+> **Status decyzji:** rozstrzygnięte — Flutter jest klientem docelowym (Android + iOS).
 > **Kontekst:** działająca aplikacja w Kotlin Compose; szkielet Flutter w `flutter_app/`.
+> **Uwaga:** obecna aplikacja Kotlin Compose zostaje aktywna do czasu migracji funkcji do Flutter.
 
 ---
 
@@ -76,7 +77,7 @@
 
 ---
 
-## Rekomendacja robocza (do akceptacji)
+## Warianty rozważane
 
 ### Wariant A — „Android first” (mniej ryzyka)
 
@@ -91,16 +92,17 @@
 2. Migruj moduły po kolei: auth → gatunki → hodowla → społeczność.
 3. Android Kotlin utrzymuj tylko do momentu parity, potem wygaszaj.
 
+**Decyzja:** wybieramy wariant B. Powód: długoterminowym celem SpiderZone jest jedna aplikacja na Android + iOS, a utrzymanie jednego codebase jest ważniejsze niż szybki kolejny release tylko na Android.
+
 ### Wariant C — hybryda (niezalecane długoterminowo)
 
 Utrzymuj oba — tylko jeśli bardzo krótki okres przejściowy (max 1–2 miesiące).
 
 ---
 
-## Co zrobić, żeby podjąć decyzję
+## Następne kroki po decyzji
 
-1. Czy **iOS w ciągu 12 miesięcy** jest must-have? (Tak → Flutter; Nie → Kotlin)
-2. Ile czasu tygodniowo na development?
-3. Czy masz dostęp do Maca pod iOS build?
-
-**Po odpowiedzi:** zaktualizuj [08-decyzje-produktowe.md](08-decyzje-produktowe.md) i [11-zadania-stan-projektu.md](11-zadania-stan-projektu.md).
+1. Skonfigurować `flutter create` + `flutterfire configure` w `flutter_app/`.
+2. Migrować moduły po kolei: Auth → gatunki → hodowla → społeczność → rozmnażanie.
+3. Utrzymywać Kotlin Compose jako działającą wersję referencyjną do czasu osiągnięcia parity.
+4. Gdy Flutter pokryje krytyczne flow, wygasić rozwój nowych funkcji w Kotlin Compose.

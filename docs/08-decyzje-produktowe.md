@@ -1,26 +1,28 @@
-# Decyzje produktowe (ustalone)
+﻿# Decyzje produktowe (ustalone)
 
-> Źródło prawdy — przy sprzeczności z kodem lub starymi notatkami, **ta lista wygrywa** (do czasu zmiany przez właściciela).
+> Zrodlo prawdy — przy sprzecznosci z kodem lub starymi notatkami ta lista wygrywa.
 
 | # | Temat | Decyzja | Data |
 |---|--------|---------|------|
-| 1 | Widoczność wpisów rozmnażania | **Prywatne i publiczne** (użytkownik wybiera) | 2026-04-26 |
-| 2 | Źródło bazy gatunków | **Do przedyskutowania** | 2026-04-26 |
-| 3 | Android vs Flutter | **Nie rozstrzygnięte** — patrz [09-flutter-vs-android.md](09-flutter-vs-android.md) | 2026-04-26 |
-| 4 | Język MVP | **Polski (PL)**; angielski później | 2026-04-26 |
-| 5 | Nazwa produktu | **SpiderZone** (na razie) | 2026-04-26 |
-| 6 | Monetyzacja / darowizny | **Późniejszy etap** | 2026-04-26 |
-| 7 | Wiek użytkowników | **Bez znaczenia** (brak gate w aplikacji) | 2026-04-26 |
-| 8 | Przypomnienia w UI | **Ustawienia profilu**, nie osobna zakładka | 2026-04-26 |
-| 9 | Zakładka zamiast przypomnień | **Rozmnażanie** | 2026-04-26 |
+| 1 | Widocznosc wpisow rozmnazania | Prywatne i publiczne (uzytkownik wybiera) | 2026-04-26 |
+| 2 | Zrodlo bazy gatunkow | Wlasna baza rozwijana etapami: CSV jako szkielet taksonomii, parametry hodowlane uzupelniane stopniowo; bez scrapingu Terrarium. Pozniej mozliwa pomoc eksperta/moderatorow (np. znajomy sklep/hodowca). | 2026-06-17 |
+| 3 | Android vs Flutter | Flutter wybrany jako klient docelowy (Android + iOS) | 2026-06-16 |
+| 4 | Jezyk MVP | Polski (PL); angielski pozniej | 2026-04-26 |
+| 5 | Nazwa produktu | SpiderZone (na razie) | 2026-04-26 |
+| 6 | Monetyzacja / darowizny | Pozniejszy etap | 2026-04-26 |
+| 7 | Wiek uzytkownikow | Bez znaczenia (brak gate w aplikacji) | 2026-04-26 |
+| 8 | Przypomnienia w UI | Ustawienia profilu, nie osobna zakladka | 2026-04-26 |
+| 9 | Zakladka zamiast przypomnien | Rozmnazanie | 2026-04-26 |
+| 10 | Trackowanie zadan | Notion jako glowna tablica + docs/tasks/TASKS.md jako kopia techniczna | 2026-06-16 |
+| 11 | Media zdjec (MVP) | Firestore + Cloudinary Free (bez podpinania karty na start) | 2026-06-16 |
+| 12 | CITES w bazie gatunkow | Pole logiczne `cites: true/false` dla kazdego gatunku; w UI pokazywane jako Tak/Nie. | 2026-06-17 |
+| 13 | Krotkie wpisy i pytania spolecznosci | Pomysl zaakceptowany jako pozniejszy modul: wpisy typu tweet/pytanie otwarte, niezaleznie od dokumentacji rozmnazania. | 2026-06-17 |
 
 ## Otwarte (wymaga dyskusji)
 
-- Skąd bierzemy rzetelne dane gatunków — patrz [07-problemy-i-wyzwania.md](07-problemy-i-wyzwania.md#baza-gatunków-rzetelne-dane).
-- Finalny wybór: Kotlin Compose vs Flutter — patrz [09-flutter-vs-android.md](09-flutter-vs-android.md).
-- CITES / gatunki chronione — czy oznaczać w aplikacji.
-- Czy wpisy rozmnażania prywatne są widoczne tylko dla autora (tak zakładamy) — potwierdzić przy implementacji `isPublic`.
+- Jak priorytetyzujemy uzupelnianie gatunkow: top gatunki MVP, potem reszta ptasznikow, gady, plazy i owady — patrz 07-problemy-i-wyzwania.md.
+- Priorytet i zakres modulu krotkich wpisow/pytan spolecznosci.
 
-## Jak aktualizować
+## Jak aktualizowac
 
-Po każdej decyzji w czacie: dopisz wiersz do tabeli lub zmień istniejący.
+Po kazdej decyzji w czacie: dopisz wiersz do tabeli lub zmien istniejacy.

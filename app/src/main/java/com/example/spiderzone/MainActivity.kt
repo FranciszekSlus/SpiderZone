@@ -10,6 +10,7 @@ import java.io.FileInputStream
 import java.io.InputStream
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.util.Patterns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -100,6 +103,8 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.firestore
@@ -268,6 +273,12 @@ internal data class BreedingPost(
     val notes: String = "",
     val femaleLabel: String = "",
     val maleLabel: String = "",
+    val status: String = "planned",
+    val startDate: String = "",
+    val cocoonDate: String = "",
+    val photoUrls: List<String> = emptyList(),
+    val videoUrls: List<String> = emptyList(),
+    val isPublic: Boolean = false,
     val createdAt: Long = 0L,
     val ownerNickname: String = "",
     val ownerAvatarUrl: String = ""
@@ -644,33 +655,118 @@ private class SpiderZoneRepository(
     }
 
     suspend fun loadBreedingFeed(myUid: String?, limit: Long = 80): List<BreedingPostItem> {
-        val snap = db.collection("breedingPosts")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .limit(limit)
-            .get()
-            .await()
-        return snap.documents.mapNotNull { doc ->
-            val post = doc.toBreedingPost() ?: return@mapNotNull null
-            BreedingPostItem(post = post, isMine = !myUid.isNullOrBlank() && post.ownerUid == myUid)
+        val publicDocs = runCatching {
+            db.collection("breedingPosts")
+                .whereEqualTo("isPublic", true)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(limit)
+                .get()
+                .await()
+                .documents
+        }.onFailure { error ->
+            Log.w("SpiderZoneBreeding", "Public breeding feed load failed; continuing with own posts", error)
+        }.getOrDefault(emptyList())
+
+        val ownDocs = if (myUid.isNullOrBlank()) {
+            emptyList()
+        } else {
+            runCatching {
+                db.collection("users").document(myUid).collection("breedingPosts")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(limit)
+                .get()
+                .await()
+                .documents
+            }.onFailure { error ->
+                Log.w("SpiderZoneBreeding", "Own breeding subcollection load failed; trying user document fallback", error)
+            }.getOrDefault(emptyList())
+        }
+
+        val fallbackPosts = if (myUid.isNullOrBlank()) {
+            emptyList()
+        } else {
+            loadBreedingPostFallbacks(myUid)
+        }
+
+        return (publicDocs + ownDocs)
+            .distinctBy { it.id }
+            .mapNotNull { doc ->
+                val post = doc.toBreedingPost() ?: return@mapNotNull null
+                BreedingPostItem(post = post, isMine = !myUid.isNullOrBlank() && post.ownerUid == myUid)
+            }
+            .plus(fallbackPosts.map { BreedingPostItem(post = it, isMine = true) })
+            .distinctBy { it.post.id }
+            .sortedByDescending { it.post.createdAt }
+            .take(limit.toInt())
+    }
+
+    suspend fun addBreedingPost(
+        uid: String,
+        post: BreedingPost,
+        photoFiles: List<CachedMedia> = emptyList(),
+        videoFiles: List<CachedMedia> = emptyList()
+    ) {
+        val profile = getUserProfile(uid)
+        val ownRef = db.collection("users").document(uid).collection("breedingPosts").document()
+        val postId = ownRef.id
+        Log.d(
+            "SpiderZoneBreeding",
+            "Creating breeding post id=$postId uid=$uid public=${post.isPublic} photos=${photoFiles.size} videos=${videoFiles.size}"
+        )
+        val photoUrls = photoFiles.map { uploadBreedingMedia(uid, postId, it, "photos") }
+        val videoUrls = videoFiles.map { uploadBreedingMedia(uid, postId, it, "videos") }
+        val complete = post.copy(
+            id = postId,
+            ownerUid = uid,
+            photoUrls = photoUrls,
+            videoUrls = videoUrls,
+            createdAt = System.currentTimeMillis(),
+            ownerNickname = profile?.nickname.orEmpty(),
+            ownerAvatarUrl = profile?.avatarUrl.orEmpty()
+        )
+        try {
+            ownRef.set(complete.toFirestoreMap()).await()
+            Log.d("SpiderZoneBreeding", "Saved own breeding post at ${ownRef.path}")
+        } catch (error: FirebaseFirestoreException) {
+            if (error.code != FirebaseFirestoreException.Code.PERMISSION_DENIED) throw error
+            if (photoUrls.isNotEmpty() || videoUrls.isNotEmpty()) throw error
+            Log.w("SpiderZoneBreeding", "Subcollection write denied; saving breeding post in user document fallback", error)
+            saveBreedingPostFallback(uid, complete)
         }
     }
 
-    suspend fun addBreedingPost(uid: String, post: BreedingPost) {
-        val profile = getUserProfile(uid)
-        db.collection("breedingPosts").add(
-            mapOf(
-                "ownerUid" to uid,
-                "speciesId" to post.speciesId,
-                "speciesLatinName" to post.speciesLatinName,
-                "speciesCommonName" to post.speciesCommonName,
-                "notes" to post.notes,
-                "femaleLabel" to post.femaleLabel,
-                "maleLabel" to post.maleLabel,
-                "createdAt" to System.currentTimeMillis(),
-                "ownerNickname" to (profile?.nickname.orEmpty()),
-                "ownerAvatarUrl" to (profile?.avatarUrl.orEmpty())
+    private suspend fun loadBreedingPostFallbacks(uid: String): List<BreedingPost> {
+        val snap = db.collection("users").document(uid).get().await()
+        val rows = snap.get("breedingPostsFallback") as? List<*> ?: return emptyList()
+        return rows.mapNotNull { row ->
+            val map = row as? Map<*, *> ?: return@mapNotNull null
+            map.toBreedingPostFallback()
+        }
+    }
+
+    private suspend fun saveBreedingPostFallback(uid: String, post: BreedingPost) {
+        db.collection("users").document(uid)
+            .set(
+                mapOf("breedingPostsFallback" to FieldValue.arrayUnion(post.toFirestoreMap())),
+                SetOptions.merge()
             )
-        ).await()
+            .await()
+        Log.d("SpiderZoneBreeding", "Saved breeding post fallback at users/$uid.breedingPostsFallback")
+    }
+
+    private suspend fun uploadBreedingMedia(
+        uid: String,
+        postId: String,
+        media: CachedMedia,
+        subfolder: String
+    ): String {
+        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(media.mimeType)
+            ?: if (subfolder == "photos") "jpg" else "mp4"
+        val fileName = "${UUID.randomUUID()}.$ext"
+        val path = "users/$uid/breedingPosts/$postId/$subfolder/$fileName"
+        Log.d("SpiderZoneBreeding", "Uploading breeding media to Storage path=$path")
+        val ref = uploadCachedMediaToStorage(media, path)
+        return ref.downloadUrl.await().toString()
     }
 
     /** Uzupełnia publicAnimals dla pupili oznaczonych jako publiczne (np. zapisanych przed sync). */
@@ -1027,9 +1123,58 @@ private fun DocumentSnapshot.toBreedingPost(): BreedingPost? {
         notes = getString("notes").orEmpty(),
         femaleLabel = getString("femaleLabel").orEmpty(),
         maleLabel = getString("maleLabel").orEmpty(),
+        status = getString("status").orEmpty().ifBlank { "planned" },
+        startDate = getString("startDate").orEmpty(),
+        cocoonDate = getString("cocoonDate").orEmpty(),
+        photoUrls = (get("photoUrls") as? List<*>)?.toRemoteUrlList() ?: emptyList(),
+        videoUrls = (get("videoUrls") as? List<*>)?.toRemoteUrlList() ?: emptyList(),
+        isPublic = getBoolean("isPublic") ?: true,
         createdAt = getLong("createdAt") ?: 0L,
         ownerNickname = getString("ownerNickname").orEmpty(),
         ownerAvatarUrl = getString("ownerAvatarUrl").orEmpty()
+    )
+}
+
+private fun BreedingPost.toFirestoreMap(): Map<String, Any?> = mapOf(
+    "id" to id,
+    "ownerUid" to ownerUid,
+    "speciesId" to speciesId,
+    "speciesLatinName" to speciesLatinName,
+    "speciesCommonName" to speciesCommonName,
+    "notes" to notes,
+    "femaleLabel" to femaleLabel,
+    "maleLabel" to maleLabel,
+    "status" to status,
+    "startDate" to startDate,
+    "cocoonDate" to cocoonDate,
+    "photoUrls" to photoUrls,
+    "videoUrls" to videoUrls,
+    "isPublic" to isPublic,
+    "createdAt" to createdAt,
+    "ownerNickname" to ownerNickname,
+    "ownerAvatarUrl" to ownerAvatarUrl
+)
+
+private fun Map<*, *>.toBreedingPostFallback(): BreedingPost? {
+    val ownerUid = this["ownerUid"] as? String ?: return null
+    return BreedingPost(
+        id = (this["id"] as? String).orEmpty().ifBlank { UUID.randomUUID().toString() },
+        ownerUid = ownerUid,
+        speciesId = (this["speciesId"] as? String).orEmpty(),
+        speciesLatinName = (this["speciesLatinName"] as? String).orEmpty(),
+        speciesCommonName = (this["speciesCommonName"] as? String).orEmpty(),
+        notes = (this["notes"] as? String).orEmpty(),
+        femaleLabel = (this["femaleLabel"] as? String).orEmpty(),
+        maleLabel = (this["maleLabel"] as? String).orEmpty(),
+        status = (this["status"] as? String).orEmpty().ifBlank { "planned" },
+        startDate = (this["startDate"] as? String).orEmpty(),
+        cocoonDate = (this["cocoonDate"] as? String).orEmpty(),
+        photoUrls = (this["photoUrls"] as? List<*>)?.toRemoteUrlList() ?: emptyList(),
+        videoUrls = (this["videoUrls"] as? List<*>)?.toRemoteUrlList() ?: emptyList(),
+        isPublic = this["isPublic"] as? Boolean ?: false,
+        createdAt = (this["createdAt"] as? Number)?.toLong() ?: 0L,
+        ownerNickname = (this["ownerNickname"] as? String).orEmpty(),
+        ownerAvatarUrl = (this["ownerAvatarUrl"] as? String).orEmpty()
     )
 }
 
@@ -1459,6 +1604,7 @@ private fun SpiderZoneApp(
             Tab.BREEDING -> BreedingScreen(
                 padding = padding,
                 myUid = repository.currentUserId().orEmpty(),
+                species = species,
                 animals = animals,
                 items = breedingFeed,
                 loading = breedingLoading,
@@ -1474,9 +1620,9 @@ private fun SpiderZoneApp(
                         }
                     }
                 },
-                onAddPost = { post ->
+                onAddPost = { post, photos, videos ->
                     val uid = repository.currentUserId() ?: return@BreedingScreen
-                    repository.addBreedingPost(uid, post)
+                    repository.addBreedingPost(uid, post, photos, videos)
                     breedingFeed = repository.loadBreedingFeed(uid)
                 },
                 onNotify = { msg ->
@@ -3162,35 +3308,134 @@ private fun formatEpochMillis(epoch: Long): String {
         .format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
 }
 
+private fun formatBreedingStatus(status: String): String = when (status.lowercase()) {
+    "planned" -> "Planowane"
+    "in_progress" -> "W trakcie"
+    "success" -> "Udane"
+    "failed" -> "Nieudane"
+    else -> status.ifBlank { "Planowane" }
+}
+
+private fun breedingSaveErrorMessage(error: Throwable): String =
+    if (error.message?.contains("PERMISSION_DENIED", ignoreCase = true) == true ||
+        error.message?.contains("Missing or insufficient permissions", ignoreCase = true) == true
+    ) {
+        "Brak uprawnien do zapisu rozmnażania. Wdroz aktualne firestore.rules albo odswiez aplikacje."
+    } else {
+        error.message ?: "Blad zapisu"
+    }
+
 @Composable
 private fun BreedingScreen(
     padding: PaddingValues,
     myUid: String,
+    species: List<Species>,
     animals: List<Animal>,
     items: List<BreedingPostItem>,
     loading: Boolean,
     onRefresh: () -> Unit,
-    onAddPost: suspend (BreedingPost) -> Unit,
+    onAddPost: suspend (BreedingPost, List<CachedMedia>, List<CachedMedia>) -> Unit,
     onNotify: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val speciesOptions = remember(animals) { speciesFilterOptionsFromAnimals(animals) }
     var selectedSpeciesKey by remember { mutableStateOf<String?>(null) }
     var showAddForm by remember { mutableStateOf(false) }
+    var speciesQuery by remember { mutableStateOf("") }
+    var selectedSpecies by remember { mutableStateOf<HodowlaWyborGatunku?>(null) }
     var notes by remember { mutableStateOf("") }
     var femaleLabel by remember { mutableStateOf("") }
     var maleLabel by remember { mutableStateOf("") }
-    var postSpeciesKey by remember { mutableStateOf<String?>(null) }
+    var status by remember { mutableStateOf("planned") }
+    var startDate by remember { mutableStateOf("") }
+    var cocoonDate by remember { mutableStateOf("") }
+    var pickedPhotos by remember { mutableStateOf<List<CachedMedia>>(emptyList()) }
+    var pickedVideos by remember { mutableStateOf<List<CachedMedia>>(emptyList()) }
+    var isPublicPost by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
 
-    val mySpeciesKeys = remember(speciesOptions) { speciesOptions.map { it.key }.toSet() }
-    val filteredItems = remember(items, selectedSpeciesKey, mySpeciesKeys) {
-        val relevant = items.filter { it.post.speciesKey() in mySpeciesKeys }
-        if (selectedSpeciesKey == null) relevant
-        else relevant.filter { it.post.speciesKey() == selectedSpeciesKey }
+    val catalogPicks = remember(species) { TerrariumSpeciesCatalog.toSpeciesPicks(species) }
+    val speciesSuggestions = remember(speciesQuery, catalogPicks, species) {
+        mergeSpeciesSuggestions(speciesQuery, catalogPicks, species)
+    }
+    val statusOptions = remember {
+        listOf(
+            "planned" to "Planowane",
+            "in_progress" to "W trakcie",
+            "success" to "Udane",
+            "failed" to "Nieudane"
+        )
+    }
+    val filteredItems = remember(items, selectedSpeciesKey) {
+        if (selectedSpeciesKey == null) items
+        else items.filter { it.post.speciesKey() == selectedSpeciesKey }
     }
 
-    Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp)) {
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        scope.launch {
+            runCatching {
+                val cached = withContext(Dispatchers.IO) {
+                    uris.onEach { grantPersistableRead(context, it) }
+                        .map { importPickedMedia(context, it, "photos") }
+                }
+                pickedPhotos = pickedPhotos + cached
+                onNotify("Dodano ${cached.size} zdjec")
+            }.onFailure {
+                onNotify(mediaUploadErrorMessage(it))
+            }
+        }
+    }
+    val videoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        scope.launch {
+            runCatching {
+                val cached = withContext(Dispatchers.IO) {
+                    uris.onEach { grantPersistableRead(context, it) }
+                        .map { importPickedMedia(context, it, "videos") }
+                }
+                pickedVideos = pickedVideos + cached
+                onNotify("Dodano ${cached.size} filmow")
+            }.onFailure {
+                onNotify(mediaUploadErrorMessage(it))
+            }
+        }
+    }
+
+    fun resetBreedingForm() {
+        speciesQuery = ""
+        selectedSpecies = null
+        notes = ""
+        femaleLabel = ""
+        maleLabel = ""
+        status = "planned"
+        startDate = ""
+        cocoonDate = ""
+        pickedPhotos = emptyList()
+        pickedVideos = emptyList()
+        isPublicPost = false
+    }
+
+    fun selectedSpeciesLabel(): String = when (val selected = selectedSpecies) {
+        is HodowlaWyborGatunku.Takson ->
+            selected.pick.latinName + (selected.pick.commonName?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: "")
+        is HodowlaWyborGatunku.BazaFirestore ->
+            selected.sp.latinName + selected.sp.commonName.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+        null -> ""
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = 12.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -3199,7 +3444,7 @@ private fun BreedingScreen(
             Column(Modifier.weight(1f)) {
                 Text("Rozmnazanie", style = MaterialTheme.typography.titleLarge)
                 Text(
-                    "Dodawaj wpisy i przegladaj hodowcow. Filtruj po gatunkach z Twojej hodowli.",
+                    "Dokumentuj proby rozmnazania. Prywatne zostaja u Ciebie, publiczne trafiaja do feedu.",
                     style = MaterialTheme.typography.bodySmall,
                     color = SpiderZoneColors.TextSecondary
                 )
@@ -3211,94 +3456,196 @@ private fun BreedingScreen(
             }
         }
         Spacer(Modifier.height(8.dp))
-        if (speciesOptions.isEmpty()) {
-            Text(
-                "Dodaj zwierzeta w Hodowli, aby odblokowac filtry gatunkow i publikacje rozmnazania.",
-                color = SpiderZoneColors.TextSecondary,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    AssistChip(
-                        onClick = { selectedSpeciesKey = null },
-                        label = { Text("Wszystkie moje gatunki") }
-                    )
-                }
-                items(speciesOptions, key = { it.key }) { option ->
-                    AssistChip(
-                        onClick = { selectedSpeciesKey = option.key },
-                        label = { Text(option.label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    )
-                }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item {
+                AssistChip(
+                    onClick = { selectedSpeciesKey = null },
+                    label = { Text("Wszystkie wpisy") }
+                )
             }
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = { showAddForm = !showAddForm }) {
-                Text(if (showAddForm) "Anuluj dodawanie" else "Dodaj rozmnazanie")
+            items(speciesOptions, key = { it.key }) { option ->
+                AssistChip(
+                    onClick = { selectedSpeciesKey = option.key },
+                    label = { Text(option.label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                )
             }
         }
-        if (showAddForm && speciesOptions.isNotEmpty()) {
+        Spacer(Modifier.height(8.dp))
+        TextButton(onClick = { showAddForm = !showAddForm }) {
+            Text(if (showAddForm) "Wroc do feedu" else "Dodaj rozmnazanie")
+        }
+        if (showAddForm) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = SpiderZoneColors.Surface),
                 shape = RoundedCornerShape(14.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Nowy wpis", fontWeight = FontWeight.Bold)
-                    Text("Gatunek (z Twojej hodowli)", style = MaterialTheme.typography.labelMedium)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(speciesOptions, key = { "post-${it.key}" }) { option ->
-                            AssistChip(
-                                onClick = { postSpeciesKey = option.key },
-                                label = { Text(option.label, maxLines = 1) }
-                            )
+                    Text("Nowy wpis rozmnazania", fontWeight = FontWeight.Bold)
+                    AppOutlinedTextField(
+                        value = speciesQuery,
+                        onValueChange = {
+                            speciesQuery = it
+                            selectedSpecies = null
+                        },
+                        label = "Szukaj gatunku w bazie",
+                        placeholder = "np. hamorii, regius, modliszka"
+                    )
+                    if (speciesQuery.isNotBlank() && selectedSpecies == null) {
+                        speciesSuggestions.take(8).forEach { row ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedSpecies = row.wybor
+                                        speciesQuery = when (val wybor = row.wybor) {
+                                            is HodowlaWyborGatunku.Takson -> wybor.pick.latinName
+                                            is HodowlaWyborGatunku.BazaFirestore -> wybor.sp.latinName
+                                        }
+                                    },
+                                colors = CardDefaults.cardColors(containerColor = SpiderZoneColors.Background),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(row.label, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
+                    }
+                    if (selectedSpecies != null) {
+                        Text(
+                            "Wybrano: ${selectedSpeciesLabel()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SpiderZoneColors.Primary
+                        )
                     }
                     AppOutlinedTextField(value = femaleLabel, onValueChange = { femaleLabel = it }, label = "Samica (opcjonalnie)")
                     AppOutlinedTextField(value = maleLabel, onValueChange = { maleLabel = it }, label = "Samiec (opcjonalnie)")
+                    Text("Status", style = MaterialTheme.typography.labelMedium)
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(statusOptions, key = { it.first }) { option ->
+                            AssistChip(
+                                onClick = { status = option.first },
+                                label = { Text(if (status == option.first) "${option.second} ✓" else option.second) }
+                            )
+                        }
+                    }
+                    AppOutlinedTextField(
+                        value = startDate,
+                        onValueChange = { startDate = it },
+                        label = "Data rozpoczecia (opcjonalnie)",
+                        placeholder = "np. 2026-06-17"
+                    )
+                    AppOutlinedTextField(
+                        value = cocoonDate,
+                        onValueChange = { cocoonDate = it },
+                        label = "Data kokonu (opcjonalnie)",
+                        placeholder = "np. 2026-07-02"
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Wpis publiczny", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "Publiczny wpis zobacza inni hodowcy. Prywatny zostaje tylko u Ciebie.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = SpiderZoneColors.TextSecondary
+                            )
+                        }
+                        Switch(checked = isPublicPost, onCheckedChange = { isPublicPost = it })
+                    }
                     AppOutlinedTextField(
                         value = notes,
                         onValueChange = { notes = it },
-                        label = "Notatki / plan",
+                        label = "Notatki, przebieg, warunki",
                         singleLine = false,
-                        maxLines = 4
+                        maxLines = 12
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { photoPicker.launch(arrayOf("image/*")) }) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Zdjecia")
+                        }
+                        Button(onClick = { videoPicker.launch(arrayOf("video/*")) }) {
+                            Icon(Icons.Default.VideoLibrary, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Filmy")
+                        }
+                    }
+                    if (pickedPhotos.isNotEmpty()) {
+                        Text("Wybrane zdjecia: ${pickedPhotos.size}", style = MaterialTheme.typography.bodySmall)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(pickedPhotos, key = { it.file.absolutePath }) { media ->
+                                Box {
+                                    AsyncImage(
+                                        model = media.file,
+                                        contentDescription = null,
+                                        modifier = Modifier.width(72.dp).height(72.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    IconButton(
+                                        onClick = { pickedPhotos = pickedPhotos.filter { it.file != media.file } },
+                                        modifier = Modifier.align(Alignment.TopEnd)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = "Usun")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (pickedVideos.isNotEmpty()) {
+                        Text(
+                            "Wybrane filmy: ${pickedVideos.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SpiderZoneColors.TextSecondary
+                        )
+                    }
                     Button(
                         onClick = {
-                            val key = postSpeciesKey ?: speciesOptions.firstOrNull()?.key
-                            if (key == null) {
+                            val selected = selectedSpecies
+                            if (selected == null) {
                                 onNotify("Wybierz gatunek")
                                 return@Button
                             }
-                            val animal = animals.firstOrNull {
-                                val k = it.speciesId.ifBlank { it.speciesLatinName.trim().lowercase() }
-                                    .ifBlank { it.speciesCommonName.trim().lowercase() }
-                                k == key
-                            } ?: run {
-                                onNotify("Brak zwierzecia dla wybranego gatunku")
-                                return@Button
+                            val post = when (selected) {
+                                is HodowlaWyborGatunku.Takson -> BreedingPost(
+                                    ownerUid = myUid,
+                                    speciesId = TerrariumSpeciesCatalog.latinToStableId(selected.pick.latinName),
+                                    speciesLatinName = selected.pick.latinName,
+                                    speciesCommonName = selected.pick.commonName.orEmpty(),
+                                    notes = notes.trim(),
+                                    femaleLabel = femaleLabel.trim(),
+                                    maleLabel = maleLabel.trim(),
+                                    status = status,
+                                    startDate = startDate.trim(),
+                                    cocoonDate = cocoonDate.trim(),
+                                    isPublic = isPublicPost
+                                )
+                                is HodowlaWyborGatunku.BazaFirestore -> BreedingPost(
+                                    ownerUid = myUid,
+                                    speciesId = selected.sp.id.ifBlank { TerrariumSpeciesCatalog.latinToStableId(selected.sp.latinName) },
+                                    speciesLatinName = selected.sp.latinName,
+                                    speciesCommonName = selected.sp.commonName,
+                                    notes = notes.trim(),
+                                    femaleLabel = femaleLabel.trim(),
+                                    maleLabel = maleLabel.trim(),
+                                    status = status,
+                                    startDate = startDate.trim(),
+                                    cocoonDate = cocoonDate.trim(),
+                                    isPublic = isPublicPost
+                                )
                             }
                             scope.launch {
                                 saving = true
                                 runCatching {
-                                    onAddPost(
-                                        BreedingPost(
-                                            ownerUid = myUid,
-                                            speciesId = animal.speciesId,
-                                            speciesLatinName = animal.speciesLatinName.ifBlank { animal.speciesLabel },
-                                            speciesCommonName = animal.speciesCommonName,
-                                            notes = notes.trim(),
-                                            femaleLabel = femaleLabel.trim(),
-                                            maleLabel = maleLabel.trim()
-                                        )
-                                    )
-                                    notes = ""
-                                    femaleLabel = ""
-                                    maleLabel = ""
+                                    onAddPost(post, pickedPhotos, pickedVideos)
+                                    resetBreedingForm()
                                     showAddForm = false
                                     onNotify("Dodano wpis rozmnazania")
                                 }.onFailure {
-                                    onNotify(it.message ?: "Blad zapisu")
+                                    onNotify(breedingSaveErrorMessage(it))
                                 }
                                 saving = false
                             }
@@ -3306,25 +3653,23 @@ private fun BreedingScreen(
                         enabled = !saving,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (saving) "Zapisywanie..." else "Opublikuj")
+                        Text(if (saving) "Zapisywanie..." else "Zapisz wpis")
                     }
                 }
             }
             Spacer(Modifier.height(8.dp))
         }
-        LazyColumn(
+        Column(
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         ) {
             if (!loading && filteredItems.isEmpty()) {
-                item {
-                    Text(
-                        "Brak wpisow dla wybranych gatunkow.",
-                        color = SpiderZoneColors.TextSecondary
-                    )
-                }
+                Text(
+                    "Brak wpisow dla wybranych gatunkow.",
+                    color = SpiderZoneColors.TextSecondary
+                )
             }
-            items(filteredItems, key = { it.post.id }) { row ->
+            filteredItems.forEach { row ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SpiderZoneColors.Surface),
                     shape = RoundedCornerShape(14.dp),
@@ -3350,10 +3695,17 @@ private fun BreedingScreen(
                                 )
                             }
                             if (row.isMine) {
-                                Text("Twoj wpis", color = SpiderZoneColors.Primary, style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    if (row.post.isPublic) "Twoj wpis · publiczny" else "Twoj wpis · prywatny",
+                                    color = SpiderZoneColors.Primary,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            } else if (row.post.isPublic) {
+                                Text("Publiczny", color = SpiderZoneColors.TextSecondary, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         Text(row.post.speciesDisplay(), fontWeight = FontWeight.Bold)
+                        Text(formatBreedingStatus(row.post.status), color = SpiderZoneColors.Primary, style = MaterialTheme.typography.labelMedium)
                         if (row.post.femaleLabel.isNotBlank() || row.post.maleLabel.isNotBlank()) {
                             Text(
                                 buildString {
@@ -3366,8 +3718,40 @@ private fun BreedingScreen(
                                 color = SpiderZoneColors.TextSecondary
                             )
                         }
+                        if (row.post.startDate.isNotBlank() || row.post.cocoonDate.isNotBlank()) {
+                            Text(
+                                buildString {
+                                    if (row.post.startDate.isNotBlank()) append("Start: ${row.post.startDate}")
+                                    if (row.post.cocoonDate.isNotBlank()) {
+                                        if (isNotEmpty()) append(" | ")
+                                        append("Kokon: ${row.post.cocoonDate}")
+                                    }
+                                },
+                                color = SpiderZoneColors.TextSecondary,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                         if (row.post.notes.isNotBlank()) {
                             Text(row.post.notes, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        if (row.post.photoUrls.isNotEmpty()) {
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(row.post.photoUrls, key = { it }) { url ->
+                                    RemoteImage(
+                                        url = url,
+                                        contentDescription = row.post.speciesDisplay(),
+                                        modifier = Modifier.width(86.dp).height(86.dp).clip(RoundedCornerShape(10.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+                        if (row.post.videoUrls.isNotEmpty()) {
+                            Text(
+                                "Dolaczono ${row.post.videoUrls.size} filmow.",
+                                color = SpiderZoneColors.TextSecondary,
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
