@@ -3,7 +3,9 @@
 > Mirror zadań z Notion.
 > Główna tablica: https://app.notion.com/p/5bca70934bbf471d8592f55823020b5d
 
-**Ostatnia aktualizacja:** 2026-06-17
+**Ostatnia aktualizacja:** 2026-06-18
+
+**Notion:** zaktualizowane 2026-06-18 przez MCP (`SpiderZone Tasks`).
 
 ---
 
@@ -12,6 +14,7 @@
 | ID | Zadanie | Notatki |
 |----|---------|---------|
 | FLUT-01 | Dokończyć konfigurację Flutter/Firebase | Flutter SDK działa, platformy wygenerowane, `flutter run` działa; zostało `flutterfire configure` i Firebase options |
+| MEDIA-02 | Flutter: upload Cloudinary multipart + zapis `secure_url` w Firestore | Testowy multipart upload działa w `Hodowla` przez `spiderzone_dev_unsigned`; zostało zapisanie `secure_url` w modelach Firestore |
 
 ---
 
@@ -38,8 +41,6 @@
 | LEGAL-03 | Usuwanie konta (UI + kasowanie danych) | P1 |
 | FB-01 | Deploy `firestore.rules`, `storage.rules`, indeksów | P1 |
 | FB-02 | Migracja `breedingPostsFallback` do `users/{uid}/breedingPosts` i usunięcie fallbacku | P1 |
-| MEDIA-01 | Sprawdzić Cloudinary Free i utworzyć unsigned upload preset | P0 |
-| MEDIA-02 | Flutter: upload Cloudinary multipart + zapis `secure_url` w Firestore | P1 |
 | MEDIA-03 | Kompresja zdjęć/filmów i limity rozmiaru przed uploadem | P1 |
 | COST-01 | Paginacja feedów, cache obrazów i limity zapytań | P1 |
 | TEST-01 | Flutter smoke tests: start, routing, theme, podstawowe ekrany | P1 |
@@ -59,6 +60,7 @@
 
 | ID | Zadanie | Data |
 |----|---------|------|
+| MEDIA-01 | Cloudinary Free + unsigned upload preset `spiderzone_dev_unsigned` | 2026-06-18 |
 | BREED-01 | `isPublic` na wpisach rozmnażania (prywatne/publiczne) | 2026-06-17 |
 | TECH-01 | Potwierdzic i utrwalić decyzję Flutter jako główny klient | 2026-06-17 |
 | — | Dokumentacja w `docs/` (katalog tematyczny) | 2026-04-26 |
