@@ -4,4 +4,6 @@ abstract final class AppRoutes {
   static const collection = '/collection';
   static const breeding = '/breeding';
   static const profile = '/profile';
+
+  static String speciesDetail(String id) => '/species/$id';
 }

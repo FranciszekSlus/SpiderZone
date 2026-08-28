@@ -5,7 +5,7 @@
 | # | Temat | Decyzja | Data |
 |---|--------|---------|------|
 | 1 | Widocznosc wpisow rozmnazania | Prywatne i publiczne (uzytkownik wybiera) | 2026-04-26 |
-| 2 | Zrodlo bazy gatunkow | Wlasna baza rozwijana etapami: CSV jako szkielet taksonomii, parametry hodowlane uzupelniane stopniowo; bez scrapingu Terrarium. Pozniej mozliwa pomoc eksperta/moderatorow (np. znajomy sklep/hodowca). | 2026-06-17 |
+| 2 | Zrodlo bazy gatunkow | Wlasna baza rozwijana etapami: CSV jako szkielet taksonomii, parametry hodowlane uzupelniane stopniowo (docelowo wiekszosc danych z AI + reczna weryfikacja/poprawki); bez scrapingu Terrarium. Pozniej mozliwa pomoc eksperta/moderatorow (np. znajomy sklep/hodowca). | 2026-06-17 |
 | 3 | Android vs Flutter | Flutter wybrany jako klient docelowy (Android + iOS) | 2026-06-16 |
 | 4 | Jezyk MVP | Polski (PL); angielski pozniej | 2026-04-26 |
 | 5 | Nazwa produktu | SpiderZone (na razie) | 2026-04-26 |

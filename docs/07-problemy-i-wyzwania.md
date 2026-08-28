@@ -13,7 +13,7 @@
 ### Decyzja robocza
 
 - CSV zostaje szkieletem bazy: nazwa naukowa, nazwa polska, taksonomia.
-- Parametry hodowlane (temperatura, wilgotność, wielkość, dieta, CITES itd.) będą uzupełniane etapami.
+- Parametry hodowlane (temperatura, wilgotność, wielkość, dieta, CITES itd.) będą uzupełniane etapami — **docelowo większość treści generowana z pomocą AI, a następnie weryfikowana i poprawiana ręcznie** (przez właściciela lub moderatorów).
 - Nie kopiujemy masowo danych z Terrarium ani innych serwisów bez zgody/licencji.
 - Linki zewnętrzne mogą być pomocniczą referencją, ale użytkownik ma zostawać w aplikacji.
 - W późniejszej fazie możliwa pomoc ekspercka/moderatorska, np. znajomy sklep/hodowca, po pokazaniu okrojonej wersji aplikacji.

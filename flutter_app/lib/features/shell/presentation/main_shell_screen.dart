@@ -9,17 +9,15 @@ class MainShellScreen extends StatelessWidget {
   final Widget child;
 
   int _indexFromLocation(String location) {
-    if (location.startsWith(AppRoutes.species)) return 1;
-    if (location.startsWith(AppRoutes.collection)) return 2;
-    if (location.startsWith(AppRoutes.breeding)) return 3;
-    if (location.startsWith(AppRoutes.profile)) return 4;
+    if (location.startsWith(AppRoutes.collection)) return 1;
+    if (location.startsWith(AppRoutes.breeding)) return 2;
+    if (location.startsWith(AppRoutes.profile)) return 3;
     return 0;
   }
 
   void _onTap(BuildContext context, int index) {
     const routes = [
       AppRoutes.home,
-      AppRoutes.species,
       AppRoutes.collection,
       AppRoutes.breeding,
       AppRoutes.profile,
@@ -60,11 +58,6 @@ class MainShellScreen extends StatelessWidget {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search),
-            label: 'Gatunki',
           ),
           NavigationDestination(
             icon: Icon(Icons.pets_outlined),
