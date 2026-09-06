@@ -5,7 +5,7 @@
 | Zakładka | Moduł |
 |----------|--------|
 | Home | Podsumowanie, skróty, wyszukiwarka gatunków, ostatnie aktywności |
-| Gatunki | Baza wiedzy / szczegóły po wejściu z Home lub listy |
+| Gatunki | Baza wiedzy / szczegóły po wejściu z Home (bez osobnej zakładki w dolnym menu) |
 | Hodowla | Własne zwierzęta |
 | Społeczność | Publiczni hodowcy i pupile |
 | Rozmnażanie | Dokumentacja breeding |

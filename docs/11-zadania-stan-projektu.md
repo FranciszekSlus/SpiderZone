@@ -1,11 +1,21 @@
 ﻿# Zadania i stan projektu
 
-> Aktualizacja: 2026-06-17. Oparte na kodzie w repo (Android Kotlin jako referencja + Flutter jako klient docelowy).
+> Aktualizacja: 2026-08-28. Oparte na kodzie w repo (Android Kotlin jako referencja + Flutter jako klient docelowy).
 > Aktywna tablica: docs/tasks/TASKS.md · Technika: docs/12-dzialanie-techniczne.md
 
 Legenda: ✅ zrobione · 🟡 czesciowo · ❌ brakuje · ⚠️ problem / blokada
 
 ## 1. Moduly funkcjonalne
+
+### Gatunki / Home search
+
+| Element | Stan | Uwagi |
+|---------|------|-------|
+| Wyszukiwarka na Home | ✅ | Live search po nazwie łacińskiej i polskiej |
+| Filtry (ptaszniki, nazwa PL, rodzina) | ✅ | Chipy + bottom sheet rodziny |
+| Karta gatunku (szczegóły) | ✅ | Route `/species/:id`, taksonomia + parametry hodowlane |
+| Lokalny CSV w assets | ✅ | `terrarium_species.csv` (~280+ gatunków) |
+| Osobna zakładka Gatunki | ❌ | Celowo — wyszukiwarka jest na Home (FLUT-04) |
 
 ### Rozmnazanie
 
@@ -54,7 +64,7 @@ Legenda: ✅ zrobione · 🟡 czesciowo · ❌ brakuje · ⚠️ problem / bloka
 | UX-01 | Design system Flutter | Komponenty, typografia, kolory, puste stany |
 | UX-02 | Home z wyszukiwarką | Bez osobnego ekranu wyszukiwania |
 | FLUT-02 | Auth we Flutter | Logowanie, rejestracja, email gate |
-| FLUT-03A | Gatunki we Flutter | Home search + karta gatunku |
+| FLUT-03A | Gatunki we Flutter | ✅ Home search + karta gatunku |
 | MEDIA-01 | Migracja uploadu mediow do Cloudinary Free | Zastapic upload Firebase Storage, zapisywac URL w Firestore |
 | MEDIA-02 | Cloudinary Flutter service | Unsigned upload preset + multipart upload |
 | COST-01 | Kompresja zdjec + paginacja feedow | Limity Spark + transfer Cloudinary |
