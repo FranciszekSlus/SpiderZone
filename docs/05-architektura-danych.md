@@ -1,9 +1,24 @@
 ﻿# Architektura danych (Firebase + Cloudinary)
 
+## Baza gatunków (lokalny CSV — źródło prawdy we Flutter MVP)
+
+Aktualny katalog gatunków siedzi w `flutter_app/assets/terrarium_species.csv`
+(scalone z plików `data/species/*.csv`). **Nie wymaga Firestore** do działania
+wyszukiwarki i karty gatunku.
+
+Pola CSV (28 kolumn):
+`id, kingdom, phylum, class, order, family, genus, species, commonName,
+description, temperament, housing, feeding, appearance, occurrence, lifeMode,
+temperatureDay, temperatureNight, humidity, sizeMale, sizeFemale, venom,
+difficulty, cites, diet, documentedBreeding, careNotes, funFact`.
+
+Firestore `species/` zostaje opcją na później (merge / zdjęcia / moderacja) —
+**teraz nic nie musisz dopinać w Console**, żeby baza działała lokalnie.
+
 ## Kolekcje Firestore
 
 ```text
-species/                    # baza gatunkow (read: wszyscy, write: zablokowany z klienta)
+species/                    # opcjonalnie później: baza gatunkow w chmurze (MVP = lokalny CSV)
 publicProfiles/{uid}        # profil publiczny hodowcy
 publicAnimals/{animalId}    # publiczne zwierzeta -> feed spolecznosci
 breedingPosts/{postId}      # publiczny feed rozmnazania (tylko isPublic=true)

@@ -24,7 +24,7 @@
 |----|---------|-----------|
 | DATA-01 | Strategia rzetelnej bazy gatunków — dyskusja + plan | P0 |
 | UX-01 | Docelowy design system Flutter: komponenty, typografia, spacing, stany | P0 |
-| UX-02 | Zaprojektować Home z wyszukiwarką gatunków, skrótami i ostatnimi aktywnościami | P0 |
+| UX-02 | Zaprojektować Home z wyszukiwarką gatunków, skrótami i ostatnimi aktywnościami | P0 — szkic v1: drzewo + fullscreen search (docs/17) |
 | UX-03 | Zaprojektować profil i ustawienia (publiczny profil vs prywatne ustawienia) | P1 |
 | UX-04 | Opisać animacje: przejścia, bottom sheets, karty, loading/skeleton | P1 |
 | FLUT-04 | Uporządkować routing Flutter i nawigację bez osobnego ekranu wyszukiwarki | P0 |

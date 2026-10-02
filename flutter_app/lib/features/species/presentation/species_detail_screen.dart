@@ -6,6 +6,7 @@ import 'package:spiderzone/core/theme/app_tokens.dart';
 import 'package:spiderzone/core/widgets/sz_card.dart';
 import 'package:spiderzone/features/species/application/species_providers.dart';
 import 'package:spiderzone/features/species/domain/species.dart';
+import 'package:spiderzone/features/species/domain/taxonomy_labels.dart';
 
 class SpeciesDetailScreen extends ConsumerWidget {
   const SpeciesDetailScreen({super.key, required this.speciesId});
@@ -82,6 +83,31 @@ class _SpeciesDetailBody extends StatelessWidget {
                   ),
                 ),
               ],
+              if (species.difficulty.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    Chip(
+                      label: Text(species.difficulty),
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                      labelStyle: const TextStyle(color: AppColors.textPrimary),
+                    ),
+                    Chip(
+                      label: Text('CITES: ${species.citesLabel}'),
+                      backgroundColor: AppColors.surfaceElevated,
+                      labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ],
+              if (species.description.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  species.description,
+                  style: const TextStyle(color: AppColors.textPrimary, height: 1.4),
+                ),
+              ],
             ],
           ),
         ),
@@ -91,10 +117,28 @@ class _SpeciesDetailBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const _SectionTitle('Taksonomia'),
-              _FieldRow(label: 'Gromada', value: species.phylum),
-              _FieldRow(label: 'Rząd', value: species.taxonomicClass),
-              _FieldRow(label: 'Podrząd', value: species.suborder),
-              _FieldRow(label: 'Rodzina', value: species.family),
+              _FieldRow(label: 'Królestwo', value: polishTaxonLabel(species.kingdom)),
+              _FieldRow(label: 'Typ', value: polishTaxonLabel(species.phylum)),
+              _FieldRow(label: 'Gromada', value: polishTaxonLabel(species.taxonomicClass)),
+              _FieldRow(label: 'Rząd', value: polishTaxonLabel(species.taxonomicOrder)),
+              if (species.suborder.isNotEmpty)
+                _FieldRow(label: 'Podrząd', value: polishTaxonLabel(species.suborder)),
+              _FieldRow(label: 'Rodzina', value: polishTaxonLabel(species.family)),
+              _FieldRow(label: 'Rodzaj', value: species.displayGenus),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SzCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionTitle('Wygląd i zachowanie'),
+              _FieldRow(label: 'Wygląd', value: species.appearance),
+              _FieldRow(label: 'Temperament', value: species.temperament),
+              _FieldRow(label: 'Jad', value: species.venom),
+              _FieldRow(label: 'Tryb życia', value: species.lifeMode),
+              _FieldRow(label: 'Występowanie', value: species.occurrence),
             ],
           ),
         ),
@@ -104,30 +148,21 @@ class _SpeciesDetailBody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const _SectionTitle('Parametry hodowlane'),
-              const Text(
-                'Puste pola (—) będą uzupełniane etapami. Większość danych docelowo generowana z pomocą AI i weryfikowana ręcznie.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _FieldRow(label: 'Występowanie', value: species.occurrence),
-              _FieldRow(label: 'Tryb życia', value: species.lifeMode),
+              _FieldRow(label: 'Terrarium', value: species.housing),
+              _FieldRow(label: 'Karmienie', value: species.feeding),
               _FieldRow(label: 'Temperatura (dzień)', value: species.temperatureDay),
               _FieldRow(label: 'Temperatura (noc)', value: species.temperatureNight),
               _FieldRow(label: 'Wilgotność', value: species.humidity),
               _FieldRow(label: 'Wielkość (samiec)', value: species.sizeMale),
               _FieldRow(label: 'Wielkość (samica)', value: species.sizeFemale),
-              _FieldRow(label: 'Temperament', value: species.temperament),
-              _FieldRow(label: 'Jad', value: species.venom),
               _FieldRow(label: 'Zaawansowanie', value: species.difficulty),
-              _FieldRow(label: 'CITES', value: species.cites),
+              _FieldRow(label: 'CITES', value: species.citesLabel),
               _FieldRow(label: 'Dieta', value: species.diet),
               _FieldRow(
                 label: 'Udokumentowane rozmnażania',
                 value: species.documentedBreeding,
               ),
+              _FieldRow(label: 'Notatki hodowlane', value: species.careNotes),
             ],
           ),
         ),

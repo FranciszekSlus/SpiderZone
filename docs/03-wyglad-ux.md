@@ -34,7 +34,7 @@ Implementacja Flutter: docelowo `flutter_app/lib/core/theme/`.
 
 | Ekran | Kierunek UX |
 |-------|-------------|
-| Home | Wyszukiwarka gatunków, skróty, ostatnie zwierzęta/wpisy, puste stany |
+| Home | Wyszukiwarka gatunków (fullscreen overlay) + drzewo taksonomii; skróty/ostatnie aktywności w kolejnej iteracji |
 | Gatunek | Duże zdjęcie, nazwy, tagi, parametry w kartach, źródła/weryfikacja |
 | Hodowla | Karty zwierząt ze zdjęciem, szybkie filtry, CTA „Dodaj zwierzę” |
 | Rozmnażanie | Timeline/karty prób, statusy kolorami, filtry po statusie i gatunku |

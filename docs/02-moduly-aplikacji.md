@@ -34,13 +34,16 @@
 **Cel:** ekran startowy, który od razu pomaga znaleźć gatunek i wrócić do najważniejszych działań.
 
 **Docelowe elementy:**
-- Wyszukiwarka gatunków w bazie.
-- Skróty: dodaj zwierzę, dodaj rozmnażanie, przypomnienia, profil.
-- Ostatnie zwierzęta z hodowli.
-- Ostatnie wpisy rozmnażania.
+- Wyszukiwarka gatunków w bazie (tap → fullscreen overlay, live search, karty).
+- Przeglądanie bazy drzewem taksonomii (gromada → … → gatunek).
+- Skróty: dodaj zwierzę, dodaj rozmnażanie, przypomnienia, profil *(kolejna iteracja)*.
+- Ostatnie zwierzęta z hodowli *(kolejna iteracja)*.
+- Ostatnie wpisy rozmnażania *(kolejna iteracja)*.
 - Status danych / puste stany dla nowych użytkowników.
 
-**Decyzja:** nie robimy osobnego okna tylko do wyszukiwarki; wyszukiwanie gatunków ma być częścią Home.
+**Szkic UX:** [17-ux-home-search.md](17-ux-home-search.md).
+
+**Decyzja:** nie robimy osobnego okna tylko do wyszukiwarki; wyszukiwanie gatunków ma być częścią Home (overlay otwierany z Home).
 
 ---
 

@@ -57,7 +57,7 @@ void main() {
   });
 
   group('SpeciesCsvLoader', () {
-    test('parses basic CSV row', () {
+    test('parses legacy semicolon CSV row', () {
       const csv = '''
 Nazwa naukowa;Nazwa polska;Gromada;Rząd;Podrząd;Rodzina
 Brachypelma hamorii;Ptasznik meksykański;Pajęczaki;Pająki;Ptasznikowate;Theraphosidae
@@ -68,6 +68,20 @@ Brachypelma hamorii;Ptasznik meksykański;Pajęczaki;Pająki;Ptasznikowate;Thera
       expect(species.first.latinName, 'Brachypelma hamorii');
       expect(species.first.commonName, 'Ptasznik meksykański');
       expect(species.first.id, 'brachypelma_hamorii');
+    });
+
+    test('parses expanded comma CSV with care fields', () {
+      const csv = '''
+id,kingdom,phylum,class,order,family,genus,species,commonName,description,temperament,housing,feeding,appearance,occurrence,lifeMode,temperatureDay,temperatureNight,humidity,sizeMale,sizeFemale,venom,difficulty,cites,diet,documentedBreeding,careNotes,funFact
+1,Animalia,Arthropoda,Arachnida,Araneae,Theraphosidae,Acanthoscurria,Acanthoscurria geniculata,Ptasznik białokolankowy,Opis testowy,Nerwowy,Terrarium 40cm,Świerszcze,Ciemny,Brazylia,Naziemny,24-28°C,20-23°C,70-80%,16 cm,20 cm,Łagodny,średniozaawansowany,false,Owady,Tak,Notatka,Ciekawostka
+''';
+
+      final species = SpeciesCsvLoader().parseCsv(csv);
+      expect(species, hasLength(1));
+      expect(species.first.latinName, 'Acanthoscurria geniculata');
+      expect(species.first.housing, contains('Terrarium'));
+      expect(species.first.citesLabel, 'Nie');
+      expect(species.first.category, 'tarantula');
     });
   });
 }
