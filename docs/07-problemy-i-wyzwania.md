@@ -28,10 +28,10 @@
 
 ### Co mamy teraz
 
-- `terrarium_species_care_template.csv` w assets.
-- `terrarium_species.csv` jako główna lista gatunków w aplikacji.
-- Taksonomia ptasników (`TheraphosidaeTaxonomy.kt`).
-- Merge z Firestore `species` + seed (`SeedData.kt`).
+- Scalony katalog `flutter_app/assets/terrarium_species.csv` (~175 gatunków, 28 pól hodowlanych).
+- Źródła CSV w `data/species/` (baza1–5).
+- Model Flutter `Species` z taksonomią + opisem, terrarium, karmieniem, wyglądem itd.
+- MVP działa **lokalnie z assets** — bez Firestore.
 
 ### Co brakuje
 

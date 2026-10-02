@@ -50,12 +50,14 @@ bool _matchesQuery(Species species, String query) {
   final latin = _normalize(species.latinName);
   final common = _normalize(species.commonName);
   final family = _normalize(species.family);
-  final genus = _normalize(species.genus);
+  final genus = _normalize(species.displayGenus);
+  final description = _normalize(species.description);
 
   if (latin.contains(query) ||
       common.contains(query) ||
       family.contains(query) ||
-      genus.contains(query)) {
+      genus.contains(query) ||
+      description.contains(query)) {
     return true;
   }
 
@@ -80,7 +82,7 @@ int _relevanceScore(Species species, String query) {
 
   if (latin == query || common == query) return 100;
   if (latin.startsWith(query) || common.startsWith(query)) return 80;
-  if (species.genus.toLowerCase() == query) return 70;
+  if (species.displayGenus.toLowerCase() == query) return 70;
   if (latin.contains(query) || common.contains(query)) return 50;
   return 10;
 }
